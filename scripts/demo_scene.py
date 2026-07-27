@@ -19,7 +19,7 @@ def main():
         active_window_title="Synthetic cardiac anatomy — educational demo",
         build_prompt=build_prompt,
     )
-    editor.topic.set("🩺 Medical Diagram Explanation")
+    editor.topic.set("Medical diagram explanation")
     editor.include_title.set(False)
     editor.general_request.insert(
         "1.0",
@@ -173,7 +173,7 @@ def main():
         )
 
     editor.root.after(500, start_demo)
-    editor.root.title("Click to Claude — Visual Prompt Studio — Demo Ready")
+    editor.root.title("Click to Claude — Screenshot editor — Demo Ready")
     editor.root.update_idletasks()
     editor.run()
     return 0

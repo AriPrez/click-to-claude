@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 - 2026-07-27
+
+### Changed
+
+- Reworked the editor into a calmer desktop workspace with neutral surfaces,
+  clearer typography, and one primary accent color.
+- Simplified the header, tool rail, question cards, status bar, and
+  user-facing labels.
+- Redesigned the review dialog so its privacy message and confirmation action
+  remain immediately visible.
+- Updated the static preview and medical demo to match the new interface.
+
 ## 0.4.1 - 2026-07-27
 
 ### Added
