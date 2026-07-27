@@ -53,6 +53,29 @@ def test_zoom_supports_eight_times_magnification():
     assert editor.zoom == 8.0
 
 
+def test_context_lens_covers_more_area_than_detail_lens():
+    operation = {"x": 500, "y": 400}
+
+    detail = ScreenshotEditor._pin_crop_box(operation, (1000, 800), context=False)
+    context = ScreenshotEditor._pin_crop_box(operation, (1000, 800), context=True)
+
+    detail_area = (detail[2] - detail[0]) * (detail[3] - detail[1])
+    context_area = (context[2] - context[0]) * (context[3] - context[1])
+    assert context_area > detail_area * 5
+
+
+def test_context_lens_stays_inside_the_source_image():
+    box = ScreenshotEditor._pin_crop_box(
+        {"x": 5, "y": 5},
+        (200, 120),
+        context=True,
+    )
+
+    assert box[0:2] == (0, 0)
+    assert 0 < box[2] <= 200
+    assert 0 < box[3] <= 120
+
+
 def test_export_render_applies_vector_annotations_without_selection():
     editor = ScreenshotEditor.__new__(ScreenshotEditor)
     editor.original_image = Image.new("RGBA", (200, 120), "white")

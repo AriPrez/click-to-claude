@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 - 2026-07-27
+
+### Added
+
+- Dual-scale Pin Lens cards showing both the exact detail and its broader visual
+  context.
+
+### Changed
+
+- The medical demo now uses smooth contextual zooms and a more realistic
+  heart-analysis request focused on the mitral apparatus and a coronary vessel.
+
 ## 0.4.0 - 2026-07-27
 
 ### Added
