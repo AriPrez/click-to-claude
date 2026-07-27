@@ -44,7 +44,7 @@ def extract_ocr_text(image_path):
     return None
 
 def capture_screen():
-    """Interactive partial screenshot using scrot."""
+    """Clean interactive area selection without line artifacts using gnome-screenshot / maim / scrot."""
     if os.path.exists(TMP_IMG):
         try:
             os.remove(TMP_IMG)
@@ -53,6 +53,24 @@ def capture_screen():
 
     time.sleep(0.3)
     print("Select a region on your screen...")
+    
+    # 1. Try gnome-screenshot (Native GNOME area capture, clean crosshair, zero line artifacts)
+    try:
+        res = subprocess.run(["gnome-screenshot", "-a", "-f", TMP_IMG], check=False)
+        if res.returncode == 0 and os.path.exists(TMP_IMG):
+            return True
+    except Exception:
+        pass
+
+    # 2. Try maim
+    try:
+        res = subprocess.run(["maim", "-s", TMP_IMG], check=False)
+        if res.returncode == 0 and os.path.exists(TMP_IMG):
+            return True
+    except Exception:
+        pass
+
+    # 3. Fallback to scrot
     res = subprocess.run(["scrot", "-s", "-o", TMP_IMG], check=False)
     return res.returncode == 0 and os.path.exists(TMP_IMG)
 
@@ -72,8 +90,9 @@ def copy_text_to_clipboard(text):
     p.communicate(input=text.encode('utf-8'))
 
 def get_claude_window():
-    """Finds the window ID of the mini-app Claude window (excludes Antigravity and VSCode)."""
+    """Finds the window ID of Claude or Chrome window."""
     try:
+        # Search by window name containing Claude
         output = subprocess.check_output(
             ["xdotool", "search", "--onlyvisible", "--name", "Claude"],
             text=True
@@ -85,6 +104,19 @@ def get_claude_window():
                 return wid
     except Exception:
         pass
+
+    # Fallback search for Chrome windows
+    try:
+        output = subprocess.check_output(
+            ["xdotool", "search", "--onlyvisible", "--class", "google-chrome"],
+            text=True
+        ).strip()
+        lines = [line.strip() for line in output.split('\n') if line.strip()]
+        if lines:
+            return lines[-1]
+    except Exception:
+        pass
+
     return None
 
 def open_or_focus_claude():
@@ -105,7 +137,7 @@ def open_or_focus_claude():
     
     try:
         subprocess.Popen(chrome_cmd)
-        for _ in range(20):
+        for _ in range(25):
             time.sleep(0.2)
             wid = get_claude_window()
             if wid:
@@ -119,13 +151,12 @@ def open_or_focus_claude():
     return get_claude_window()
 
 def paste_in_claude(wid=None, prompt_text=None):
-    """Pastes screenshot and structured prompt ONLY into the active Claude window."""
-    if not wid:
-        send_notification("Click to Claude", "Screenshot is in clipboard. Open Claude to paste!")
-        return
-
-    subprocess.run(["xdotool", "windowactivate", "--sync", wid], check=False)
-    time.sleep(0.5)
+    """Pastes screenshot and prompt into Claude or default active window."""
+    target_wid = wid if wid else get_claude_window()
+    
+    if target_wid:
+        subprocess.run(["xdotool", "windowactivate", "--sync", target_wid], check=False)
+        time.sleep(0.5)
 
     # 1. Paste image
     subprocess.run(["xdotool", "key", "ctrl+v"], check=False)
@@ -215,11 +246,9 @@ def launch_pins_ui(image_path, active_window_title):
     canvas.pack(pady=5)
     canvas_img_id = canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
 
-    # Right side panel (Topic + Pin Questions)
     right_frame = tk.Frame(main_frame, bg="#1e1e2e", width=340, padx=10, pady=10)
     right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(10, 0))
 
-    # Section 1: Topic selection
     lbl_ctx_title = tk.Label(right_frame, text="🎯 Topic / Goal", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
     lbl_ctx_title.pack(anchor="w", pady=(0, 2))
 
@@ -234,14 +263,12 @@ def launch_pins_ui(image_path, active_window_title):
     combo_topic = ttk.Combobox(right_frame, textvariable=topic_var, values=topics, state="readonly", font=("Helvetica", 9))
     combo_topic.pack(fill=tk.X, pady=(0, 10))
 
-    # Detected source application
     lbl_app_info = tk.Label(
         right_frame, text=f"📱 Source: {active_window_title[:35]}...",
         fg="#a6adc8", bg="#1e1e2e", font=("Helvetica", 8, "italic")
     )
     lbl_app_info.pack(anchor="w", pady=(0, 8))
 
-    # Section 2: Questions per pin
     lbl_pins_title = tk.Label(right_frame, text="📍 Pin Notes & Questions", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
     lbl_pins_title.pack(anchor="w", pady=(0, 5))
 
@@ -265,10 +292,8 @@ def launch_pins_ui(image_path, active_window_title):
     def send_action():
         edited_img.convert("RGB").save(image_path, "PNG")
         
-        # OCR extraction
         ocr_text = extract_ocr_text(image_path)
         
-        # Build structured Mega-Prompt
         lines = [
             "🎯 AUTOMATIC CONTEXT:",
             f"• Topic: {topic_var.get()}",

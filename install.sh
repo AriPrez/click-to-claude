@@ -15,8 +15,8 @@ echo "=========================================================="
 chmod +x "$SCRIPT_PATH" 2>/dev/null || true
 
 # 2. Install required packages
-echo "📦 Installing system dependencies (xclip, xdotool, scrot, tesseract-ocr, python3-tk, python3-pil)..."
-sudo apt update && sudo apt install -y xclip xdotool scrot tesseract-ocr libnotify-bin python3-tk python3-pil python3-pil.imagetk
+echo "📦 Installing system dependencies (gnome-screenshot, maim, xclip, xdotool, scrot, tesseract-ocr)..."
+sudo apt update && sudo apt install -y gnome-screenshot maim xclip xdotool scrot tesseract-ocr libnotify-bin python3-tk python3-pil python3-pil.imagetk
 
 # 3. Install .desktop shortcut
 echo "🖥️ Registering desktop application shortcut..."
