@@ -17,6 +17,42 @@ def test_normalized_box_accepts_reverse_dragging():
     assert ScreenshotEditor._normalized_box(operation) == (10, 20, 90, 70)
 
 
+def test_precision_pin_keeps_the_exact_target_pixel_visible():
+    editor = ScreenshotEditor.__new__(ScreenshotEditor)
+    editor.base_scale = 1.0
+    image = Image.new("RGBA", (200, 120), "white")
+    operation = {"id": 1, "type": "pin", "x": 100, "y": 60, "comment": ""}
+
+    editor._draw_pin(image, operation, 1)
+
+    assert image.getpixel((100, 60)) == (255, 255, 255, 255)
+    assert image.getpixel((124, 47))[:3] == (124, 92, 255)
+
+
+def test_precision_pin_badge_stays_inside_image_near_edges():
+    geometry = ScreenshotEditor._pin_geometry(
+        {"x": 195, "y": 5},
+        (200, 120),
+        1.0,
+    )
+
+    assert geometry["badge_x"] < 195
+    assert geometry["badge_y"] > 5
+    assert geometry["radius"] <= geometry["badge_x"] <= 200 - geometry["radius"]
+    assert geometry["radius"] <= geometry["badge_y"] <= 120 - geometry["radius"]
+
+
+def test_zoom_supports_eight_times_magnification():
+    editor = ScreenshotEditor.__new__(ScreenshotEditor)
+    editor.zoom = 1.0
+    editor._render = MagicMock()
+    editor._update_status = MagicMock()
+
+    editor._set_zoom(12)
+
+    assert editor.zoom == 8.0
+
+
 def test_export_render_applies_vector_annotations_without_selection():
     editor = ScreenshotEditor.__new__(ScreenshotEditor)
     editor.original_image = Image.new("RGBA", (200, 120), "white")

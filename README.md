@@ -16,17 +16,24 @@ No Anthropic API key is required.
 > Click to Claude is an independent community project. It is not affiliated
 > with, endorsed by, or maintained by Anthropic.
 
-![Visual Prompt Studio showing pins, an arrow, a highlight, and a redaction](assets/product-overview.png)
+## Demo
+
+[![Animated demo of precision pins on a synthetic heart illustration](assets/precision-pin-medical-demo.gif)](assets/precision-pin-medical-demo.mp4)
+
+The demo uses a synthetic educational illustration and no patient data.
+[Open the full-quality MP4](assets/precision-pin-medical-demo.mp4) or the
+[static interface preview](assets/product-overview.png).
 
 ## Why it is useful
 
 - Select exactly the part of the screen you want to discuss.
-- Add numbered pins with one question per location.
-- See a zoomed Pin Lens thumbnail for every numbered point.
+- Target tiny details with a crosshair while keeping the exact pixel visible.
+- Keep numbered badges offset from the structures they describe.
+- Inspect every point through a magnified Precision Pin Lens.
 - Move, reorder, or remove pins individually.
 - Draw arrows and highlights alongside privacy masks.
 - Undo and redo annotation changes.
-- Zoom and pan without changing the exported screenshot resolution.
+- Zoom up to 800% and pan without changing the exported screenshot resolution.
 - Export the annotated result as a standalone PNG.
 - Redact secrets before clipboard transfer.
 - Add a general request and optional source-window context.
@@ -35,6 +42,13 @@ No Anthropic API key is required.
 
 Click to Claude never presses Claude's final Send button. You can review the
 image and prompt in Claude before submitting them.
+
+## Example workflows
+
+- Study anatomy, microscopy, scientific figures, maps, or technical diagrams.
+- Ask one precise question per UI element while debugging software.
+- Review dense documents, dashboards, charts, and presentation slides.
+- Redact private details before asking for help with a screenshot.
 
 ## Compatibility
 
@@ -87,12 +101,13 @@ bash uninstall.sh
 
 1. Press `Super+C`, or run `click-to-claude`.
 2. Select a screen region.
-3. Add pins and comments, or switch to **Redact Area** and draw masks.
-4. Use **Select** to move pins or select any annotation for deletion.
-5. Add arrows, highlights, and an optional general request.
-6. Choose whether to include the source-window title.
-7. Select **Review & Paste**, inspect the generated text, then approve the paste.
-8. Review the result in Claude and submit it yourself.
+3. Zoom onto a detail, then add precision pins and one question per location.
+4. Switch to **Redact Area** and draw masks over private information.
+5. Use **Select** to move pins or select any annotation for deletion.
+6. Add arrows, highlights, and an optional general request.
+7. Choose whether to include the source-window title.
+8. Select **Review & Paste**, inspect the generated text, then approve the paste.
+9. Review the result in Claude and submit it yourself.
 
 ### Visual Prompt Studio shortcuts
 
@@ -105,7 +120,7 @@ bash uninstall.sh
 | `R` | Redact |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Delete` | Remove selected annotation |
-| Mouse wheel | Zoom |
+| Mouse wheel | Precision zoom, up to 800% |
 | Middle-button drag | Pan |
 | `Ctrl+Enter` | Open final review |
 | `Ctrl+S` | Export annotated PNG |
@@ -124,6 +139,11 @@ bash uninstall.sh
 The dedicated browser profile still contains its own Claude login data. The
 uninstaller preserves it intentionally and prints its location.
 
+For medical or educational material, do not capture identifiable patient data.
+Click to Claude is an annotation and transfer utility, not a medical device or
+clinical decision-support system. Independently verify any AI-generated
+explanation before using it for study or care.
+
 ## Development
 
 Python 3.10 or newer is required.
@@ -138,6 +158,13 @@ pytest
 ```
 
 The CI runs linting and tests across Python 3.10, 3.12, and 3.13.
+
+The privacy-safe demo is reproducible on Linux when `Xvfb`, `xdotool`, and
+`ffmpeg` are installed:
+
+```bash
+scripts/record_demo.sh
+```
 
 ## Troubleshooting
 

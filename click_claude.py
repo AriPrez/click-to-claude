@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 APP_NAME = "Click to Claude"
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.4.0"
 APP_WINDOW_CLASS = "ClickToClaude"
 CLAUDE_URL = "https://claude.ai/new"
 CHROME_PROFILE_DIR = Path.home() / ".local" / "share" / "click-to-claude" / "chrome-profile"

@@ -52,6 +52,7 @@ class ScreenshotEditor:
         self.drag_start = None
         self.drag_before = None
         self.drag_changed = False
+        self.drag_pin_offset = None
         self.next_id = 1
 
         self.confirmed = False
@@ -259,7 +260,7 @@ class ScreenshotEditor:
 
         tools = (
             ("select", "V", "SELECT"),
-            ("pin", "1", "PIN"),
+            ("pin", "⊕", "PIN"),
             ("arrow", ">", "ARROW"),
             ("highlight", "H", "MARK"),
             ("redact", "R", "HIDE"),
@@ -330,7 +331,7 @@ class ScreenshotEditor:
         ).grid(row=0, column=0, padx=14, pady=12, sticky="w")
         tk.Label(
             canvas_header,
-            text="Wheel: zoom  •  Middle drag: pan",
+            text="Wheel: precision zoom  •  Middle drag: pan",
             bg=COLORS["surface_raised"],
             fg=COLORS["dim"],
             font=(FONT_UI, 8),
@@ -408,8 +409,8 @@ class ScreenshotEditor:
         self.canvas.bind("<ButtonPress-2>", self._start_pan)
         self.canvas.bind("<B2-Motion>", self._drag_pan)
         self.canvas.bind("<MouseWheel>", self._on_wheel)
-        self.canvas.bind("<Button-4>", lambda _event: self._set_zoom(self.zoom + 0.1))
-        self.canvas.bind("<Button-5>", lambda _event: self._set_zoom(self.zoom - 0.1))
+        self.canvas.bind("<Button-4>", lambda event: self._zoom_at_cursor(event, 0.1))
+        self.canvas.bind("<Button-5>", lambda event: self._zoom_at_cursor(event, -0.1))
         self.canvas.bind("<Configure>", self._position_canvas_image)
 
     def _build_inspector(self, parent):
@@ -462,6 +463,8 @@ class ScreenshotEditor:
             "♿ Accessibility Review",
             "📄 Text Explanation & Docs",
             "⚙️ Terminal / Log Analysis",
+            "🩺 Medical Diagram Explanation",
+            "🔬 Scientific Figure Analysis",
             "💡 General Question",
         )
         ttk.Combobox(
@@ -504,7 +507,7 @@ class ScreenshotEditor:
         pins_panel.grid_columnconfigure(0, weight=1)
         tk.Label(
             pins_panel,
-            text="PIN LENS",
+            text="PRECISION PIN LENS",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
             font=(FONT_MONO, 8, "bold"),
@@ -802,6 +805,15 @@ class ScreenshotEditor:
             self.drag_start = (x_position, y_position)
             self.drag_before = copy.deepcopy(self.operations)
             self.drag_changed = False
+            selected = self._operation_by_id(self.selected_id)
+            self.drag_pin_offset = (
+                (
+                    selected["x"] - x_position,
+                    selected["y"] - y_position,
+                )
+                if selected and selected["type"] == "pin"
+                else None
+            )
             self._rebuild_pin_cards()
             self._render()
             return
@@ -827,8 +839,15 @@ class ScreenshotEditor:
         if self.mode.get() == "select" and self.selected_id is not None:
             operation = self._operation_by_id(self.selected_id)
             if operation and operation["type"] == "pin":
-                operation["x"] = x_position
-                operation["y"] = y_position
+                offset_x, offset_y = self.drag_pin_offset or (0, 0)
+                operation["x"] = min(
+                    max(0, x_position + offset_x),
+                    self.original_image.width,
+                )
+                operation["y"] = min(
+                    max(0, y_position + offset_y),
+                    self.original_image.height,
+                )
                 self.drag_changed = True
                 self._render()
             return
@@ -849,6 +868,7 @@ class ScreenshotEditor:
             self.drag_start = None
             self.drag_before = None
             self.drag_changed = False
+            self.drag_pin_offset = None
             return
 
         if not self.preview_operation or not self.drag_start:
@@ -876,12 +896,34 @@ class ScreenshotEditor:
 
     def _on_wheel(self, event):
         direction = 1 if event.delta > 0 else -1
-        self._set_zoom(self.zoom + direction * 0.1)
+        self._zoom_at_cursor(event, direction * 0.1)
 
     def _set_zoom(self, zoom):
-        self.zoom = min(3.0, max(0.5, round(zoom, 2)))
+        self.zoom = min(8.0, max(0.5, round(zoom, 2)))
         self._render()
         self._update_status()
+
+    def _zoom_at_cursor(self, event, delta):
+        """Zoom while keeping the image point under the cursor stable."""
+        old_scale = self.base_scale * self.zoom
+        if old_scale <= 0:
+            self._set_zoom(self.zoom + delta)
+            return
+
+        image_x = (self.canvas.canvasx(event.x) - self.image_offset_x) / old_scale
+        image_y = (self.canvas.canvasy(event.y) - self.image_offset_y) / old_scale
+        self._set_zoom(self.zoom + delta)
+        self.root.update_idletasks()
+
+        new_scale = self.base_scale * self.zoom
+        target_x = self.image_offset_x + image_x * new_scale - event.x
+        target_y = self.image_offset_y + image_y * new_scale - event.y
+        scroll_width = max(self.canvas.winfo_width(), self.display_width)
+        scroll_height = max(self.canvas.winfo_height(), self.display_height)
+        if scroll_width > self.canvas.winfo_width():
+            self.canvas.xview_moveto(max(0, target_x) / scroll_width)
+        if scroll_height > self.canvas.winfo_height():
+            self.canvas.yview_moveto(max(0, target_y) / scroll_height)
 
     def _operation_by_id(self, operation_id):
         return next(
@@ -893,13 +935,20 @@ class ScreenshotEditor:
         hit_radius = max(18, 20 / self.base_scale)
         for operation in reversed(self.operations):
             if operation["type"] == "pin":
-                if (
-                    math.hypot(
-                        operation["x"] - x_position,
-                        operation["y"] - y_position,
-                    )
-                    <= hit_radius
-                ):
+                geometry = self._pin_geometry(
+                    operation,
+                    self.original_image.size,
+                    max(self.base_scale, 0.2),
+                )
+                anchor_distance = math.hypot(
+                    operation["x"] - x_position,
+                    operation["y"] - y_position,
+                )
+                badge_distance = math.hypot(
+                    geometry["badge_x"] - x_position,
+                    geometry["badge_y"] - y_position,
+                )
+                if anchor_distance <= hit_radius or badge_distance <= geometry["radius"] + 4:
                     return operation["id"]
             elif operation["type"] in {"redact", "highlight"}:
                 left, right = sorted((operation["x1"], operation["x2"]))
@@ -1059,20 +1108,74 @@ class ScreenshotEditor:
 
     def _draw_pin(self, image, operation, number):
         annotation_scale = max(self.base_scale, 0.2)
-        radius = max(16, int(16 / annotation_scale))
-        x_position = operation["x"]
-        y_position = operation["y"]
+        geometry = self._pin_geometry(operation, image.size, annotation_scale)
+        radius = geometry["radius"]
+        badge_x = geometry["badge_x"]
+        badge_y = geometry["badge_y"]
+        anchor_x = operation["x"]
+        anchor_y = operation["y"]
+        line_width = max(2, int(2 / annotation_scale))
         draw = ImageDraw.Draw(image)
+
+        vector_x = badge_x - anchor_x
+        vector_y = badge_y - anchor_y
+        distance = max(1, math.hypot(vector_x, vector_y))
+        unit_x = vector_x / distance
+        unit_y = vector_y / distance
+        target_radius = max(4, int(4 / annotation_scale))
+        draw.line(
+            (
+                anchor_x + unit_x * target_radius,
+                anchor_y + unit_y * target_radius,
+                badge_x - unit_x * radius,
+                badge_y - unit_y * radius,
+            ),
+            fill=(34, 211, 238, 255),
+            width=line_width,
+        )
+
+        crosshair_extent = target_radius * 2.4
+        crosshair_gap = target_radius * 1.3
+        for start, end in (
+            (
+                (anchor_x - crosshair_extent, anchor_y),
+                (anchor_x - crosshair_gap, anchor_y),
+            ),
+            (
+                (anchor_x + crosshair_gap, anchor_y),
+                (anchor_x + crosshair_extent, anchor_y),
+            ),
+            (
+                (anchor_x, anchor_y - crosshair_extent),
+                (anchor_x, anchor_y - crosshair_gap),
+            ),
+            (
+                (anchor_x, anchor_y + crosshair_gap),
+                (anchor_x, anchor_y + crosshair_extent),
+            ),
+        ):
+            draw.line((start, end), fill=(34, 211, 238, 255), width=line_width)
         draw.ellipse(
             (
-                x_position - radius,
-                y_position - radius,
-                x_position + radius,
-                y_position + radius,
+                anchor_x - target_radius,
+                anchor_y - target_radius,
+                anchor_x + target_radius,
+                anchor_y + target_radius,
+            ),
+            outline=(245, 247, 255, 255),
+            width=line_width,
+        )
+
+        draw.ellipse(
+            (
+                badge_x - radius,
+                badge_y - radius,
+                badge_x + radius,
+                badge_y + radius,
             ),
             fill=(124, 92, 255, 255),
             outline=(245, 247, 255, 255),
-            width=max(2, int(2 / annotation_scale)),
+            width=line_width,
         )
         try:
             font = ImageFont.truetype(
@@ -1082,12 +1185,36 @@ class ScreenshotEditor:
         except OSError:
             font = ImageFont.load_default()
         draw.text(
-            (x_position, y_position),
+            (badge_x, badge_y),
             str(number),
             fill=(245, 247, 255, 255),
             anchor="mm",
             font=font,
         )
+
+    @staticmethod
+    def _pin_geometry(operation, image_size, annotation_scale):
+        """Place the numbered badge away from its exact target."""
+        image_width, image_height = image_size
+        radius = max(14, int(14 / annotation_scale))
+        offset = radius * 1.7
+        anchor_x = operation["x"]
+        anchor_y = operation["y"]
+
+        badge_x = anchor_x + offset
+        if badge_x + radius > image_width:
+            badge_x = anchor_x - offset
+        badge_y = anchor_y - offset
+        if badge_y - radius < 0:
+            badge_y = anchor_y + offset
+
+        badge_x = min(max(radius, badge_x), max(radius, image_width - radius))
+        badge_y = min(max(radius, badge_y), max(radius, image_height - radius))
+        return {
+            "badge_x": badge_x,
+            "badge_y": badge_y,
+            "radius": radius,
+        }
 
     def _draw_arrow(self, image, operation, width):
         draw = ImageDraw.Draw(image)
@@ -1112,12 +1239,17 @@ class ScreenshotEditor:
         width = max(2, int(2 / annotation_scale))
         padding = max(8, int(8 / annotation_scale))
         if operation["type"] == "pin":
-            radius = max(22, int(22 / annotation_scale))
+            geometry = self._pin_geometry(
+                operation,
+                image.size,
+                annotation_scale,
+            )
+            radius = geometry["radius"]
             box = (
-                operation["x"] - radius,
-                operation["y"] - radius,
-                operation["x"] + radius,
-                operation["y"] + radius,
+                min(operation["x"], geometry["badge_x"]) - radius - padding,
+                min(operation["y"], geometry["badge_y"]) - radius - padding,
+                max(operation["x"], geometry["badge_x"]) + radius + padding,
+                max(operation["y"], geometry["badge_y"]) + radius + padding,
             )
         else:
             left, top, right, bottom = self._normalized_box(operation)
@@ -1201,7 +1333,7 @@ class ScreenshotEditor:
             title.grid(row=0, column=1, sticky="ew")
             tk.Label(
                 title,
-                text=f"PIN {number:02d}",
+                text=(f"PIN {number:02d}  ·  X {round(operation['x'])}  Y {round(operation['y'])}"),
                 bg=background,
                 fg=COLORS["cyan"] if selected else COLORS["primary_hover"],
                 font=(FONT_MONO, 8, "bold"),
@@ -1257,8 +1389,8 @@ class ScreenshotEditor:
             entry.grid(row=1, column=1, sticky="ew", pady=(5, 0))
 
     def _pin_thumbnail(self, operation):
-        half_width = max(80, int(self.original_image.width * 0.08))
-        half_height = max(48, int(self.original_image.height * 0.06))
+        half_width = max(44, int(self.original_image.width * 0.04))
+        half_height = max(28, int(self.original_image.height * 0.035))
         left = max(0, int(operation["x"] - half_width))
         top = max(0, int(operation["y"] - half_height))
         right = min(self.original_image.width, int(operation["x"] + half_width))
@@ -1269,6 +1401,30 @@ class ScreenshotEditor:
         x_position = (92 - crop.width) // 2
         y_position = (58 - crop.height) // 2
         background.alpha_composite(crop, (x_position, y_position))
+        draw = ImageDraw.Draw(background)
+        center_x = 46
+        center_y = 29
+        draw.ellipse(
+            (center_x - 4, center_y - 4, center_x + 4, center_y + 4),
+            outline=(245, 247, 255, 255),
+            width=1,
+        )
+        draw.line(
+            (center_x - 10, center_y, center_x - 5, center_y),
+            fill=(34, 211, 238, 255),
+        )
+        draw.line(
+            (center_x + 5, center_y, center_x + 10, center_y),
+            fill=(34, 211, 238, 255),
+        )
+        draw.line(
+            (center_x, center_y - 10, center_x, center_y - 5),
+            fill=(34, 211, 238, 255),
+        )
+        draw.line(
+            (center_x, center_y + 5, center_x, center_y + 10),
+            fill=(34, 211, 238, 255),
+        )
         return ImageTk.PhotoImage(background)
 
     def _select_operation(self, operation_id):

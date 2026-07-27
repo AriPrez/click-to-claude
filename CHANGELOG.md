@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-07-27
 
 ### Added
 
 - Original application icon and a privacy-safe Visual Prompt Studio preview.
+- Precision pins with an unobstructed target, crosshair, leader line,
+  edge-aware numbered badge, coordinates, and a more focused Pin Lens.
+- Medical and scientific explanation goals plus a reproducible synthetic
+  medical demo in GIF and MP4 formats.
 - Security policy, structured issue forms, pull request checklist, and
   Dependabot configuration.
 - Troubleshooting guidance for review confirmation, fail-safe paste, shortcuts,
@@ -15,6 +19,8 @@
 - Package metadata now advertises its supported platform, Python version, and
   project links.
 - The Linux desktop launcher now installs and uses the project icon.
+- Precision zoom now reaches 800%, stays focused under the cursor, and preserves
+  the pin's grab offset while it is moved.
 
 ## 0.3.1 - 2026-07-27
 
