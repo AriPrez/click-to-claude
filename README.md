@@ -1,8 +1,22 @@
+<p align="center">
+  <img src="assets/click-to-claude.png" width="168" alt="Click to Claude application icon">
+</p>
+
 # Click to Claude
+
+[![Quality](https://github.com/AriPrez/click-to-claude/actions/workflows/quality.yml/badge.svg)](https://github.com/AriPrez/click-to-claude/actions/workflows/quality.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-7C5CFF.svg)](LICENSE)
 
 Capture a Linux screen region, add numbered pins or redactions, and paste the
 annotated image plus structured context into a dedicated Claude web-app window.
 No Anthropic API key is required.
+
+> [!IMPORTANT]
+> Click to Claude is an independent community project. It is not affiliated
+> with, endorsed by, or maintained by Anthropic.
+
+![Visual Prompt Studio showing pins, an arrow, a highlight, and a redaction](assets/product-overview.png)
 
 ## Why it is useful
 
@@ -125,6 +139,34 @@ pytest
 
 The CI runs linting and tests across Python 3.10, 3.12, and 3.13.
 
+## Troubleshooting
+
+### The review window opens but I cannot confirm
+
+Press `Ctrl+Enter` while the review window is focused. You can also press `Tab`
+until **Confirm and Paste** is selected, then press `Enter`. The confirmation
+button remains in a fixed footer even when the prompt is long.
+
+### Automatic paste stops
+
+This is the expected fail-safe when Click to Claude cannot positively identify
+its dedicated Chromium window. The annotated image remains in the clipboard:
+open Claude manually, press `Ctrl+V`, then paste the reviewed prompt.
+
+Run `click-to-claude --diagnose` and include its sanitized output in a bug
+report. Remove usernames, window titles, paths, or other private information
+first.
+
+### `Super+C` does not launch the application
+
+Another desktop action may already use that shortcut. Open the system keyboard
+settings and assign a different global shortcut to `click-to-claude`.
+
+### Capture or clipboard support is missing on Wayland
+
+Install `grim`, `slurp`, and `wl-clipboard`. Some compositors intentionally
+prevent automatic window activation; manual paste remains available.
+
 ## Current limitations
 
 - Full Wayland automation is restricted by the compositor's security model.
@@ -137,3 +179,6 @@ The CI runs linting and tests across Python 3.10, 3.12, and 3.13.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Security reports should follow [SECURITY.md](SECURITY.md). Contributions are
+welcome under [CONTRIBUTING.md](CONTRIBUTING.md).

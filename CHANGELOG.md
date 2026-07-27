@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Original application icon and a privacy-safe Visual Prompt Studio preview.
+- Security policy, structured issue forms, pull request checklist, and
+  Dependabot configuration.
+- Troubleshooting guidance for review confirmation, fail-safe paste, shortcuts,
+  and Wayland.
+
+### Changed
+
+- Package metadata now advertises its supported platform, Python version, and
+  project links.
+- The Linux desktop launcher now installs and uses the project icon.
+
 ## 0.3.1 - 2026-07-27
 
 ### Removed

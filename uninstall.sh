@@ -7,9 +7,14 @@ INSTALL_DIR="$HOME/.local/lib/click-to-claude"
 DESKTOP_PATH="$HOME/.local/share/applications/click-to-claude.desktop"
 LEGACY_DESKTOP_PATH="$HOME/.local/share/applications/click_claude.desktop"
 PROFILE_DIR="$HOME/.local/share/click-to-claude"
+ICON_PATH="$HOME/.local/share/icons/hicolor/512x512/apps/click-to-claude.png"
 
-rm -f -- "$INSTALL_BIN" "$DESKTOP_PATH" "$LEGACY_DESKTOP_PATH"
+rm -f -- "$INSTALL_BIN" "$DESKTOP_PATH" "$LEGACY_DESKTOP_PATH" "$ICON_PATH"
 rm -r -f -- "$INSTALL_DIR"
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+fi
 
 if command -v gsettings >/dev/null 2>&1; then
     python3 - <<'PY'

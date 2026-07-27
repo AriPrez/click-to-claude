@@ -6,15 +6,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/click_claude.py"
 EDITOR_PATH="$SCRIPT_DIR/editor_ui.py"
+ICON_SOURCE="$SCRIPT_DIR/assets/click-to-claude.png"
 INSTALL_DIR="$HOME/.local/lib/click-to-claude"
 INSTALL_MAIN="$INSTALL_DIR/click_claude.py"
 INSTALL_BIN="$HOME/.local/bin/click-to-claude"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_PATH="$DESKTOP_DIR/click-to-claude.desktop"
 LEGACY_DESKTOP_PATH="$DESKTOP_DIR/click_claude.desktop"
+ICON_DIR="$HOME/.local/share/icons/hicolor/512x512/apps"
+ICON_PATH="$ICON_DIR/click-to-claude.png"
 
-if [[ ! -f "$SCRIPT_PATH" || ! -f "$EDITOR_PATH" ]]; then
-    echo "Error: click_claude.py or editor_ui.py is missing." >&2
+if [[ ! -f "$SCRIPT_PATH" || ! -f "$EDITOR_PATH" || ! -f "$ICON_SOURCE" ]]; then
+    echo "Error: an application source file or icon is missing." >&2
     exit 1
 fi
 
@@ -50,6 +53,7 @@ sudo apt-get install -y grim slurp wl-clipboard || {
 
 install -Dm755 "$SCRIPT_PATH" "$INSTALL_MAIN"
 install -Dm644 "$EDITOR_PATH" "$INSTALL_DIR/editor_ui.py"
+install -Dm644 "$ICON_SOURCE" "$ICON_PATH"
 mkdir -p "$(dirname -- "$INSTALL_BIN")"
 {
     printf '#!/usr/bin/env bash\n'
@@ -64,6 +68,9 @@ rm -f -- "$LEGACY_DESKTOP_PATH"
 
 if command -v desktop-file-validate >/dev/null 2>&1; then
     desktop-file-validate "$DESKTOP_PATH"
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
 fi
 
 echo "Configuring the GNOME shortcut Super+C when supported..."

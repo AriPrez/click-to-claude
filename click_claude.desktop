@@ -2,7 +2,7 @@
 Name=Click to Claude
 Comment=Take a screenshot, add numbered pins, and auto-paste into a mini Claude window
 Exec=click-to-claude
-Icon=camera-photo
+Icon=click-to-claude
 Terminal=false
 Type=Application
 Categories=Utility;
