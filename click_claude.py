@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Click to Claude - Capture, Épingles (1, 2, 3), Contexte Automatique, OCR & Injection (Sans API)
+Click to Claude - Screenshot, Numbered Pins (1, 2, 3), Context & Auto-Paste (No API)
 Workspace: /home/ari_prezo/Bureau/Click
 """
 
@@ -20,16 +20,16 @@ def send_notification(title, message):
         pass
 
 def get_active_window_context():
-    """Détecte le nom de l'application et le titre de la fenêtre où l'utilisateur travaillait."""
+    """Detects the name and title of the application window where the user was working."""
     try:
         wid = subprocess.check_output(["xdotool", "getactivewindow"], text=True).strip()
         title = subprocess.check_output(["xdotool", "getwindowname", wid], text=True).strip()
-        return title if title else "Écran / Bureau Linux"
+        return title if title else "Linux Desktop"
     except Exception:
-        return "Application Linux"
+        return "Linux Application"
 
 def extract_ocr_text(image_path):
-    """Extrait le texte brut ou code présent dans l'image avec Tesseract (si disponible)."""
+    """Extracts raw text/code from the screenshot using Tesseract (if installed)."""
     try:
         res = subprocess.run(
             ["tesseract", image_path, "stdout", "-l", "eng+fra"],
@@ -37,7 +37,6 @@ def extract_ocr_text(image_path):
         )
         if res.returncode == 0:
             text = res.stdout.strip()
-            # Ne garder que si le texte est significatif (plus de 5 caractères)
             if len(text) > 5:
                 return text
     except Exception:
@@ -45,7 +44,7 @@ def extract_ocr_text(image_path):
     return None
 
 def capture_screen():
-    """Capture d'écran partielle avec scrot."""
+    """Interactive partial screenshot using scrot."""
     if os.path.exists(TMP_IMG):
         try:
             os.remove(TMP_IMG)
@@ -53,12 +52,12 @@ def capture_screen():
             pass
 
     time.sleep(0.3)
-    print("Veuillez sélectionner la zone à l'écran...")
+    print("Select a region on your screen...")
     res = subprocess.run(["scrot", "-s", "-o", TMP_IMG], check=False)
     return res.returncode == 0 and os.path.exists(TMP_IMG)
 
 def copy_image_to_clipboard(image_path):
-    """Copie l'image PNG dans le presse-papier X11."""
+    """Copies PNG image to X11 clipboard."""
     if not os.path.exists(image_path):
         return False
     res = subprocess.run(
@@ -68,12 +67,12 @@ def copy_image_to_clipboard(image_path):
     return res.returncode == 0
 
 def copy_text_to_clipboard(text):
-    """Copie du texte brut dans le presse-papier X11."""
+    """Copies plain text to X11 clipboard."""
     p = subprocess.Popen(["xclip", "-selection", "clipboard", "-t", "text/plain"], stdin=subprocess.PIPE)
     p.communicate(input=text.encode('utf-8'))
 
 def get_claude_window():
-    """Recherche l'ID de la fenêtre du mini-onglet Claude (exclut Antigravity et VSCode)."""
+    """Finds the window ID of the mini-app Claude window (excludes Antigravity and VSCode)."""
     try:
         output = subprocess.check_output(
             ["xdotool", "search", "--onlyvisible", "--name", "Claude"],
@@ -89,14 +88,14 @@ def get_claude_window():
     return None
 
 def open_or_focus_claude():
-    """Ouvre une petite fenêtre mini-app dédiée à Claude et s'assure qu'elle est active."""
+    """Opens a dedicated mini-app Chrome window for Claude and waits until active."""
     wid = get_claude_window()
     if wid:
         subprocess.run(["xdotool", "windowactivate", "--sync", wid], check=False)
         time.sleep(0.4)
         return wid
     
-    print("Lancement du mini-onglet Claude dans Google Chrome...")
+    print("Launching Claude mini-app window in Google Chrome...")
     chrome_cmd = [
         "google-chrome",
         "--app=https://claude.ai/new",
@@ -120,19 +119,19 @@ def open_or_focus_claude():
     return get_claude_window()
 
 def paste_in_claude(wid=None, prompt_text=None):
-    """Exécute le coller de l'image ET du prompt structuré dans Claude."""
+    """Pastes screenshot and structured prompt ONLY into the active Claude window."""
     if not wid:
-        send_notification("Click to Claude", "L'image est dans votre presse-papier. Ouvrez Claude pour la coller !")
+        send_notification("Click to Claude", "Screenshot is in clipboard. Open Claude to paste!")
         return
 
     subprocess.run(["xdotool", "windowactivate", "--sync", wid], check=False)
     time.sleep(0.5)
 
-    # 1. Coller l'image
+    # 1. Paste image
     subprocess.run(["xdotool", "key", "ctrl+v"], check=False)
     time.sleep(0.6)
 
-    # 2. Copier et coller le Mega-Prompt structuré
+    # 2. Copy and paste structured Mega-Prompt
     if prompt_text:
         copy_text_to_clipboard(prompt_text)
         time.sleep(0.2)
@@ -140,7 +139,8 @@ def paste_in_claude(wid=None, prompt_text=None):
 
 def launch_pins_ui(image_path, active_window_title):
     """
-    Interface d'Épinglage avec Sélecteur de Sujet/Contexte et OCR automatique.
+    Tkinter interface to place numbered pins (1, 2, 3...),
+    redact sensitive data, select topic context, and write pin-by-pin questions.
     """
     try:
         import tkinter as tk
@@ -154,12 +154,12 @@ def launch_pins_ui(image_path, active_window_title):
     draw = ImageDraw.Draw(edited_img)
 
     root = tk.Tk()
-    root.title("Click to Claude - Contexte Enrichi & Épingles (1, 2, 3...)")
+    root.title("Click to Claude - Pins & Context Engine")
     root.configure(bg="#181825")
     root.attributes('-topmost', True)
 
     mode = tk.StringVar(value="pin")
-    topic_var = tk.StringVar(value="🐛 Debug & Correction de Code")
+    topic_var = tk.StringVar(value="🐛 Debug & Code Fix")
     pins = []
     start_x, start_y = None, None
     rect_id = None
@@ -183,14 +183,14 @@ def launch_pins_ui(image_path, active_window_title):
     toolbar.pack(fill=tk.X, side=tk.TOP)
 
     btn_pin = tk.Button(
-        toolbar, text="📍 Épingle (1, 2, 3)", bg="#89b4fa", fg="#11111b",
+        toolbar, text="📍 Add Pin (1, 2, 3)", bg="#89b4fa", fg="#11111b",
         font=("Helvetica", 10, "bold"), relief=tk.FLAT,
         command=lambda: mode.set("pin")
     )
     btn_pin.pack(side=tk.LEFT, padx=4)
 
     btn_mask = tk.Button(
-        toolbar, text="⬛ Masquer Zone", bg="#f38ba8", fg="#11111b",
+        toolbar, text="⬛ Redact Area", bg="#f38ba8", fg="#11111b",
         font=("Helvetica", 10, "bold"), relief=tk.FLAT,
         command=lambda: mode.set("mask")
     )
@@ -206,7 +206,7 @@ def launch_pins_ui(image_path, active_window_title):
         update_canvas()
 
     btn_reset = tk.Button(
-        toolbar, text="🔄 Effacer", bg="#45475a", fg="#cdd6f4",
+        toolbar, text="🔄 Reset", bg="#45475a", fg="#cdd6f4",
         font=("Helvetica", 9), relief=tk.FLAT, command=reset_all
     )
     btn_reset.pack(side=tk.LEFT, padx=4)
@@ -215,34 +215,34 @@ def launch_pins_ui(image_path, active_window_title):
     canvas.pack(pady=5)
     canvas_img_id = canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
 
-    # Panneau de droite (Contexte + Questions)
+    # Right side panel (Topic + Pin Questions)
     right_frame = tk.Frame(main_frame, bg="#1e1e2e", width=340, padx=10, pady=10)
     right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(10, 0))
 
-    # Zone 1 : Sélection du sujet / contexte
-    lbl_ctx_title = tk.Label(right_frame, text="🎯 Sujet / Objectif", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
+    # Section 1: Topic selection
+    lbl_ctx_title = tk.Label(right_frame, text="🎯 Topic / Goal", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
     lbl_ctx_title.pack(anchor="w", pady=(0, 2))
 
     topics = [
-        "🐛 Debug & Correction de Code",
-        "💻 Refactoring & Optimisation",
-        "🎨 Design UI & Intégration",
-        "📄 Explication de texte / Docs",
-        "⚙️ Analyse de Logs / Terminal",
-        "💡 Général / Question"
+        "🐛 Debug & Code Fix",
+        "💻 Refactoring & Optimization",
+        "🎨 UI Design & Layout",
+        "📄 Text Explanation & Docs",
+        "⚙️ Terminal / Log Analysis",
+        "💡 General Question"
     ]
     combo_topic = ttk.Combobox(right_frame, textvariable=topic_var, values=topics, state="readonly", font=("Helvetica", 9))
     combo_topic.pack(fill=tk.X, pady=(0, 10))
 
-    # Info application source détectée
+    # Detected source application
     lbl_app_info = tk.Label(
-        right_frame, text=f"📱 Source : {active_window_title[:35]}...",
+        right_frame, text=f"📱 Source: {active_window_title[:35]}...",
         fg="#a6adc8", bg="#1e1e2e", font=("Helvetica", 8, "italic")
     )
     lbl_app_info.pack(anchor="w", pady=(0, 8))
 
-    # Zone 2 : Questions par repère
-    lbl_pins_title = tk.Label(right_frame, text="📍 Questions par Repère", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
+    # Section 2: Questions per pin
+    lbl_pins_title = tk.Label(right_frame, text="📍 Pin Notes & Questions", fg="#cdd6f4", bg="#1e1e2e", font=("Helvetica", 10, "bold"))
     lbl_pins_title.pack(anchor="w", pady=(0, 5))
 
     pins_canvas = tk.Canvas(right_frame, bg="#1e1e2e", highlightthickness=0)
@@ -265,44 +265,44 @@ def launch_pins_ui(image_path, active_window_title):
     def send_action():
         edited_img.convert("RGB").save(image_path, "PNG")
         
-        # Extrait OCR automatique
+        # OCR extraction
         ocr_text = extract_ocr_text(image_path)
         
-        # Construction du Mega-Prompt enrichi
+        # Build structured Mega-Prompt
         lines = [
-            "🎯 CONTEXTE DE LA CAPTURE :",
-            f"• Sujet : {topic_var.get()}",
-            f"• Fenêtre source : {active_window_title}",
-            f"• Date/Heure : {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "🎯 AUTOMATIC CONTEXT:",
+            f"• Topic: {topic_var.get()}",
+            f"• Source Window: {active_window_title}",
+            f"• Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             ""
         ]
         
         if pins:
-            lines.append("📍 QUESTIONS PAR REPÈRE NUMÉROTÉ :")
+            lines.append("📍 QUESTIONS BY NUMBERED PIN:")
             for p in pins:
                 num = p['num']
                 comment = p['entry'].get().strip()
                 if comment:
-                    lines.append(f"• Repère ({num}) : {comment}")
+                    lines.append(f"• Pin ({num}): {comment}")
                 else:
-                    lines.append(f"• Repère ({num}) : [Zone indiquée sur l'image]")
+                    lines.append(f"• Pin ({num}): [Indicated area on image]")
             lines.append("")
         
         if ocr_text:
-            lines.append("📄 TEXTE EXTRAIT DE LA ZONE (OCR) :")
+            lines.append("📄 EXTRACTED TEXT FROM IMAGE (OCR):")
             lines.append("```")
-            lines.append(ocr_text[:800]) # Limiter à 800 caractères max
+            lines.append(ocr_text[:800])
             lines.append("```")
             lines.append("")
 
-        lines.append("Peux-tu analyser l'image et apporter une réponse claire et structurée repère par repère (1, 2, 3...) ?")
+        lines.append("Please analyze the image above and provide a clear, structured response for each pin (1, 2, 3...)!")
         
         final_prompt[0] = "\n".join(lines)
         user_confirmed[0] = True
         root.destroy()
 
     btn_send = tk.Button(
-        right_frame, text="🚀 ENVOYER À CLAUDE", bg="#a6e3a1", fg="#11111b",
+        right_frame, text="🚀 SEND TO CLAUDE", bg="#a6e3a1", fg="#11111b",
         font=("Helvetica", 11, "bold"), relief=tk.FLAT, command=send_action, pady=8
     )
     btn_send.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -387,33 +387,33 @@ def main():
     parser = argparse.ArgumentParser(description="Click to Claude - Context, Pins & Auto-Paste")
     args = parser.parse_args()
 
-    # 0. Capturer le contexte de l'application active AVANT de prendre le screenshot
+    # 0. Capture active window context BEFORE taking screenshot
     active_window_title = get_active_window_context()
 
-    # 1. Capture d'écran
+    # 1. Screenshot
     captured = capture_screen()
     if not captured:
-        print("Capture annulée.")
+        print("Capture cancelled.")
         return
 
-    # 2. Interface d'Épingles, Sujet & Contexte
+    # 2. Pins, Topic & Context UI
     confirmed, prompt_text = launch_pins_ui(TMP_IMG, active_window_title)
     if not confirmed:
-        print("Envoi annulé par l'utilisateur.")
+        print("Sending cancelled by user.")
         return
 
-    # 3. Copie de l'image
+    # 3. Copy image
     copied = copy_image_to_clipboard(TMP_IMG)
     if not copied:
-        send_notification("Click to Claude", "Erreur : xclip n'est pas disponible.")
+        send_notification("Click to Claude", "Error: xclip is not available.")
         return
 
-    # 4. Ouvrir/focaliser le mini-onglet Claude
+    # 4. Open/focus mini-app Claude window
     wid = open_or_focus_claude()
 
-    # 5. Coller automatique de l'image ET du Mega-Prompt enrichi
+    # 5. Auto-paste image AND enriched Mega-Prompt
     paste_in_claude(wid, prompt_text=prompt_text)
-    send_notification("Click to Claude 🚀", "Capture & Contexte enrichi envoyés à Claude !")
+    send_notification("Click to Claude 🚀", "Screenshot & context sent to Claude!")
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,9 @@
 [Desktop Entry]
 Name=Click to Claude
-Comment=Prendre une capture d'écran et la coller automatiquement dans un mini-onglet Claude
+Comment=Take a screenshot, add numbered pins, and auto-paste into a mini Claude window
 Exec=python3 /home/ari_prezo/Bureau/Click/click_claude.py
 Icon=camera-photo
 Terminal=false
 Type=Application
 Categories=Utility;Graphics;Development;
-Keywords=screenshot;claude;ai;capture;
+Keywords=screenshot;claude;ai;capture;pins;context;
