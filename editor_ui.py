@@ -507,7 +507,7 @@ class ScreenshotEditor:
         pins_panel.grid_columnconfigure(0, weight=1)
         tk.Label(
             pins_panel,
-            text="PRECISION PIN LENS",
+            text="DETAIL + CONTEXT PIN LENS",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
             font=(FONT_MONO, 8, "bold"),
@@ -1308,29 +1308,14 @@ class ScreenshotEditor:
                 pady=8,
             )
             card.pack(fill=tk.X, pady=(0, 8))
-            card.grid_columnconfigure(1, weight=1)
+            card.grid_columnconfigure(0, weight=1)
             card.bind(
                 "<Button-1>",
                 lambda _event, operation_id=operation["id"]: self._select_operation(operation_id),
             )
 
-            thumbnail = self._pin_thumbnail(operation)
-            self.pin_images.append(thumbnail)
-            thumbnail_label = tk.Label(
-                card,
-                image=thumbnail,
-                bg=background,
-                highlightbackground=COLORS["border"],
-                highlightthickness=1,
-            )
-            thumbnail_label.grid(row=0, column=0, rowspan=2, padx=(0, 8))
-            thumbnail_label.bind(
-                "<Button-1>",
-                lambda _event, operation_id=operation["id"]: self._select_operation(operation_id),
-            )
-
             title = tk.Frame(card, bg=background)
-            title.grid(row=0, column=1, sticky="ew")
+            title.grid(row=0, column=0, sticky="ew")
             tk.Label(
                 title,
                 text=(f"PIN {number:02d}  ·  X {round(operation['x'])}  Y {round(operation['y'])}"),
@@ -1368,6 +1353,40 @@ class ScreenshotEditor:
                 font=(FONT_UI, 10, "bold"),
             ).pack(side=tk.RIGHT, padx=(4, 0))
 
+            lens_strip = tk.Frame(card, bg=background)
+            lens_strip.grid(row=1, column=0, sticky="ew", pady=(7, 0))
+            for lens_name, is_context in (("DETAIL", False), ("CONTEXT", True)):
+                lens = tk.Frame(lens_strip, bg=background)
+                lens.pack(
+                    side=tk.LEFT,
+                    fill=tk.X,
+                    expand=True,
+                    padx=((0, 4) if not is_context else (4, 0)),
+                )
+                tk.Label(
+                    lens,
+                    text=lens_name,
+                    bg=background,
+                    fg=COLORS["cyan"] if not is_context else COLORS["primary_hover"],
+                    font=(FONT_MONO, 7, "bold"),
+                ).pack(anchor="w", pady=(0, 3))
+                thumbnail = self._pin_thumbnail(operation, context=is_context)
+                self.pin_images.append(thumbnail)
+                thumbnail_label = tk.Label(
+                    lens,
+                    image=thumbnail,
+                    bg=background,
+                    highlightbackground=COLORS["border"],
+                    highlightthickness=1,
+                )
+                thumbnail_label.pack(fill=tk.X)
+                thumbnail_label.bind(
+                    "<Button-1>",
+                    lambda _event, operation_id=operation["id"]: self._select_operation(
+                        operation_id
+                    ),
+                )
+
             variable = tk.StringVar(value=operation.get("comment", ""))
             self.pin_vars[operation["id"]] = variable
 
@@ -1386,24 +1405,39 @@ class ScreenshotEditor:
                 bd=0,
                 font=(FONT_UI, 8),
             )
-            entry.grid(row=1, column=1, sticky="ew", pady=(5, 0))
+            entry.grid(row=2, column=0, sticky="ew", pady=(7, 0))
 
-    def _pin_thumbnail(self, operation):
-        half_width = max(44, int(self.original_image.width * 0.04))
-        half_height = max(28, int(self.original_image.height * 0.035))
-        left = max(0, int(operation["x"] - half_width))
-        top = max(0, int(operation["y"] - half_height))
-        right = min(self.original_image.width, int(operation["x"] + half_width))
-        bottom = min(self.original_image.height, int(operation["y"] + half_height))
+    @staticmethod
+    def _pin_crop_box(operation, image_size, context=False):
+        image_width, image_height = image_size
+        if context:
+            half_width = max(110, int(image_width * 0.14))
+            half_height = max(72, int(image_height * 0.11))
+        else:
+            half_width = max(44, int(image_width * 0.04))
+            half_height = max(28, int(image_height * 0.035))
+        return (
+            max(0, int(operation["x"] - half_width)),
+            max(0, int(operation["y"] - half_height)),
+            min(image_width, int(operation["x"] + half_width)),
+            min(image_height, int(operation["y"] + half_height)),
+        )
+
+    def _pin_thumbnail(self, operation, context=False):
+        left, top, right, bottom = self._pin_crop_box(
+            operation,
+            self.original_image.size,
+            context=context,
+        )
         crop = self.original_image.crop((left, top, right, bottom))
-        crop.thumbnail((92, 58), Image.Resampling.LANCZOS)
-        background = Image.new("RGBA", (92, 58), (8, 12, 20, 255))
-        x_position = (92 - crop.width) // 2
-        y_position = (58 - crop.height) // 2
+        crop.thumbnail((124, 64), Image.Resampling.LANCZOS)
+        background = Image.new("RGBA", (124, 64), (8, 12, 20, 255))
+        x_position = (124 - crop.width) // 2
+        y_position = (64 - crop.height) // 2
         background.alpha_composite(crop, (x_position, y_position))
         draw = ImageDraw.Draw(background)
-        center_x = 46
-        center_y = 29
+        center_x = 62
+        center_y = 32
         draw.ellipse(
             (center_x - 4, center_y - 4, center_x + 4, center_y + 4),
             outline=(245, 247, 255, 255),

@@ -24,7 +24,7 @@ xvfb-run -a -s "-screen 0 1600x1000x24 -nolisten tcp" \
         scene_pid=$!
         window_id=""
         for _attempt in $(seq 1 100); do
-            window_id="$(xdotool search --name Visual.Prompt.Studio 2>/dev/null | tail -n 1 || true)"
+            window_id="$(xdotool search --name Demo.Ready 2>/dev/null | tail -n 1 || true)"
             if test -n "$window_id"; then
                 break
             fi
@@ -42,7 +42,7 @@ xvfb-run -a -s "-screen 0 1600x1000x24 -nolisten tcp" \
             -framerate 30 \
             -video_size 1600x1000 \
             -i "$DISPLAY" \
-            -t 11 \
+            -t 30 \
             -c:v libx264 \
             -preset medium \
             -crf 23 \
@@ -51,13 +51,14 @@ xvfb-run -a -s "-screen 0 1600x1000x24 -nolisten tcp" \
             "$output_path" &
         recorder_pid=$!
         wait "$scene_pid"
-        wait "$recorder_pid"
+        kill -INT "$recorder_pid" 2>/dev/null || true
+        wait "$recorder_pid" || true
     ' bash "$MP4_OUTPUT" "$SCENE_SCRIPT"
 
 ffmpeg -loglevel warning -y \
     -i "$MP4_OUTPUT" \
     -filter_complex \
-    "fps=10,scale=960:-1:flags=lanczos,split[frames][palette_input];[palette_input]palettegen=max_colors=112[palette];[frames][palette]paletteuse=dither=bayer:bayer_scale=3" \
+    "fps=8,scale=840:-1:flags=lanczos,split[frames][palette_input];[palette_input]palettegen=max_colors=96[palette];[frames][palette]paletteuse=dither=bayer:bayer_scale=3" \
     "$GIF_OUTPUT"
 
 echo "Created:"

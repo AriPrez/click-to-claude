@@ -20,7 +20,9 @@ No Anthropic API key is required.
 
 [![Animated demo of precision pins on a synthetic heart illustration](assets/precision-pin-medical-demo.gif)](assets/precision-pin-medical-demo.mp4)
 
-The demo uses a synthetic educational illustration and no patient data.
+The demo analyzes the heart, focusing on the mitral valve apparatus, chordae
+tendineae, and an epicardial coronary vessel. It uses a synthetic educational
+illustration and no patient data.
 [Open the full-quality MP4](assets/precision-pin-medical-demo.mp4) or the
 [static interface preview](assets/product-overview.png).
 
@@ -29,7 +31,8 @@ The demo uses a synthetic educational illustration and no patient data.
 - Select exactly the part of the screen you want to discuss.
 - Target tiny details with a crosshair while keeping the exact pixel visible.
 - Keep numbered badges offset from the structures they describe.
-- Inspect every point through a magnified Precision Pin Lens.
+- Compare every point through a dual-scale Pin Lens: exact detail and surrounding
+  visual context.
 - Move, reorder, or remove pins individually.
 - Draw arrows and highlights alongside privacy masks.
 - Undo and redo annotation changes.
