@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 - 2026-07-27
+
+### Fixed
+
+- Focus the Claude message composer before pasting instead of relying only on
+  browser-window activation.
+- Verify that the clipboard exposes the capture as `image/png`.
+- Allow more time for Claude to consume an image before replacing clipboard
+  contents with the reviewed prompt.
+- Restore the PNG image to the clipboard after automation so manual `Ctrl+V`
+  remains available as a fallback.
+
 ## 0.5.0 - 2026-07-27
 
 ### Changed

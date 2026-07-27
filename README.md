@@ -174,7 +174,7 @@ scripts/record_demo.sh
 ### The review window opens but I cannot confirm
 
 Press `Ctrl+Enter` while the review window is focused. You can also press `Tab`
-until **Confirm and Paste** is selected, then press `Enter`. The confirmation
+until **Confirm and paste** is selected, then press `Enter`. The confirmation
 button remains in a fixed footer even when the prompt is long.
 
 ### Automatic paste stops
@@ -182,6 +182,13 @@ button remains in a fixed footer even when the prompt is long.
 This is the expected fail-safe when Click to Claude cannot positively identify
 its dedicated Chromium window. The annotated image remains in the clipboard:
 open Claude manually, press `Ctrl+V`, then paste the reviewed prompt.
+
+### Claude opens but the image is missing
+
+Click to Claude verifies the PNG clipboard data, focuses the message composer,
+and waits for the image paste before adding text. It then restores the image to
+the clipboard. If the website still misses an attachment, click inside the
+Claude composer and press `Ctrl+V`; the annotated PNG is ready to paste again.
 
 Run `click-to-claude --diagnose` and include its sanitized output in a bug
 report. Remove usernames, window titles, paths, or other private information
