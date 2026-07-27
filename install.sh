@@ -1,69 +1,122 @@
 #!/usr/bin/env bash
-# Automatic Installation Script for Click to Claude
-# Workspace: /home/ari_prezo/Bureau/Click
+# Installer for Ubuntu, Debian, Pop!_OS, and derivatives.
 
-set -e
+set -euo pipefail
 
-SCRIPT_DIR="/home/ari_prezo/Bureau/Click"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/click_claude.py"
+INSTALL_BIN="$HOME/.local/bin/click-to-claude"
+DESKTOP_DIR="$HOME/.local/share/applications"
+DESKTOP_PATH="$DESKTOP_DIR/click-to-claude.desktop"
+LEGACY_DESKTOP_PATH="$DESKTOP_DIR/click_claude.desktop"
 
-echo "=========================================================="
-echo "🚀 Installing Click to Claude (Pins & Context Engine)"
-echo "=========================================================="
+if [[ ! -f "$SCRIPT_PATH" ]]; then
+    echo "Error: click_claude.py was not found next to install.sh." >&2
+    exit 1
+fi
 
-# 1. Make script executable
-chmod +x "$SCRIPT_PATH" 2>/dev/null || true
+if ! command -v apt-get >/dev/null 2>&1; then
+    echo "This installer currently supports apt-based distributions only." >&2
+    echo "See README.md for the required packages and manual installation." >&2
+    exit 1
+fi
 
-# 2. Install required packages
-echo "📦 Installing system dependencies (gnome-screenshot, maim, xclip, xdotool, scrot, tesseract-ocr)..."
-sudo apt update && sudo apt install -y gnome-screenshot maim xclip xdotool scrot tesseract-ocr libnotify-bin python3-tk python3-pil python3-pil.imagetk
+echo "Installing Click to Claude..."
 
-# 3. Install .desktop shortcut
-echo "🖥️ Registering desktop application shortcut..."
-mkdir -p ~/.local/share/applications
-cp "$SCRIPT_DIR/click_claude.desktop" ~/.local/share/applications/
-chmod +x ~/.local/share/applications/click_claude.desktop 2>/dev/null || true
+base_packages=(
+    gnome-screenshot
+    libnotify-bin
+    maim
+    python3-pil
+    python3-pil.imagetk
+    python3-tk
+    scrot
+    tesseract-ocr
+    tesseract-ocr-fra
+    x11-utils
+    xclip
+    xdotool
+)
 
-# 4. Configure GNOME keyboard shortcut via Python
-echo "⌨️ Configuring global keyboard shortcut (Super + C)..."
-python3 - << 'EOF'
-import subprocess
+sudo apt-get update
+sudo apt-get install -y "${base_packages[@]}"
+
+# These packages enable wlroots-based Wayland capture/clipboard support. Some
+# older apt repositories do not provide all of them, so keep X11 install usable.
+sudo apt-get install -y grim slurp wl-clipboard || {
+    echo "Wayland helper packages were unavailable; X11 support is still installed."
+}
+
+install -Dm755 "$SCRIPT_PATH" "$INSTALL_BIN"
+mkdir -p "$DESKTOP_DIR"
+sed "s|^Exec=.*|Exec=$INSTALL_BIN|" \
+    "$SCRIPT_DIR/click_claude.desktop" > "$DESKTOP_PATH"
+chmod 644 "$DESKTOP_PATH"
+rm -f -- "$LEGACY_DESKTOP_PATH"
+
+if command -v desktop-file-validate >/dev/null 2>&1; then
+    desktop-file-validate "$DESKTOP_PATH"
+fi
+
+echo "Configuring the GNOME shortcut Super+C when supported..."
+python3 - "$INSTALL_BIN" <<'PY'
+import ast
 import os
+import subprocess
+import sys
 
+command = sys.argv[1]
+desktop = os.environ.get("XDG_CURRENT_DESKTOP", "")
+if not any(name in desktop.upper() for name in ("GNOME", "UBUNTU", "POP")):
+    print("Non-GNOME desktop detected; configure the global shortcut manually.")
+    raise SystemExit(0)
+
+schema = "org.gnome.settings-daemon.plugins.media-keys"
+custom_path = (
+    "/org/gnome/settings-daemon/plugins/media-keys/"
+    "custom-keybindings/custom-click-to-claude/"
+)
+legacy_path = (
+    "/org/gnome/settings-daemon/plugins/media-keys/"
+    "custom-keybindings/custom-click-claude/"
+)
+
+result = subprocess.run(
+    ["gsettings", "get", schema, "custom-keybindings"],
+    capture_output=True,
+    text=True,
+    check=False,
+)
+raw_value = result.stdout.strip()
+if raw_value.startswith("@as "):
+    raw_value = raw_value[4:]
 try:
-    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "")
-    if "GNOME" in desktop or "Ubuntu" in desktop or "Pop" in desktop:
-        key_path = "org.gnome.settings-daemon.plugins.media-keys"
-        custom_path = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom-click-claude/"
-        
-        res = subprocess.run(["gsettings", "get", key_path, "custom-keybindings"], capture_output=True, text=True)
-        current = res.stdout.strip()
-        
-        if custom_path not in current:
-            if current == "@as []" or current == "[]" or not current:
-                new_val = f"['{custom_path}']"
-            else:
-                clean_current = current.rstrip("]").strip()
-                new_val = f"{clean_current}, '{custom_path}']"
-            subprocess.run(["gsettings", "set", key_path, "custom-keybindings", new_val], check=False)
-        
-        binding_base = f"{key_path}.custom-keybinding:{custom_path}"
-        script_cmd = f"python3 /home/ari_prezo/Bureau/Click/click_claude.py"
-        
-        subprocess.run(["gsettings", "set", binding_base, "name", "Click to Claude"], check=False)
-        subprocess.run(["gsettings", "set", binding_base, "command", script_cmd], check=False)
-        subprocess.run(["gsettings", "set", binding_base, "binding", "<Super>c"], check=False)
-        print("✅ Shortcut 'Super + C' (Windows + C) successfully configured!")
-except Exception as e:
-    print(f"Shortcut notice: Manual setup available in Settings -> Keyboard ({e})")
-EOF
+    current = ast.literal_eval(raw_value) if raw_value else []
+except (SyntaxError, ValueError):
+    current = []
+current = [path for path in current if path != legacy_path]
+if custom_path not in current:
+    current.append(custom_path)
 
-echo "=========================================================="
-echo "🎉 Installation completed!"
-echo ""
-echo "💡 How to use:"
-echo "1. Press 'Super + C' (Windows Key + C)"
-echo "2. Select any region on your screen"
-echo "3. Add numbered pins (1, 2, 3...) or redact sensitive data"
-echo "4. Click '🚀 SEND TO CLAUDE': Claude mini-window opens and auto-pastes!"
-echo "=========================================================="
+subprocess.run(
+    ["gsettings", "set", schema, "custom-keybindings", repr(current)],
+    check=True,
+)
+binding_schema = f"{schema}.custom-keybinding:{custom_path}"
+for key, value in (
+    ("name", "Click to Claude"),
+    ("command", command),
+    ("binding", "<Super>c"),
+):
+    subprocess.run(
+        ["gsettings", "set", binding_schema, key, value],
+        check=True,
+    )
+print("GNOME shortcut Super+C configured.")
+PY
+
+echo
+echo "Installation complete."
+echo "Run: $INSTALL_BIN"
+echo "Diagnostics: $INSTALL_BIN --diagnose"
+echo "If Super+C is already in use, change it in Settings > Keyboard > Shortcuts."

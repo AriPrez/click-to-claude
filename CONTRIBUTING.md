@@ -1,33 +1,36 @@
-# Contributing to Click to Claude 🚀
+# Contributing
 
-Thank you for your interest in contributing to **Click to Claude**! 
+Thank you for improving Click to Claude.
 
-## 🛠️ How to Contribute
+## Local setup
 
-1. **Fork the Repository**: Click the `Fork` button at the top right of this repository.
-2. **Clone your fork**:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/click-to-claude.git
-   cd click-to-claude
-   ```
-3. **Create a Feature Branch**:
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-4. **Make Your Changes**: Add new features, fix bugs, or improve documentation.
-5. **Commit Your Changes**:
-   ```bash
-   git commit -m "Add: Amazing new feature"
-   ```
-6. **Push to Your Fork**:
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-7. **Open a Pull Request**: Go to the original repository and open a Pull Request!
+```bash
+git clone https://github.com/YOUR_USERNAME/click-to-claude.git
+cd click-to-claude
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+```
 
-## 💡 Ideas for Contribution
+Before opening a pull request:
 
-- 🌐 Support for ChatGPT, Perplexity, DeepSeek or custom LLM Web UIs.
-- 🎨 Wayland / Grim / Slurp support for Fedora & Arch Linux natively.
-- 🔊 Sound effects / visual flash overlay on capture.
-- 📦 Packaging for Flatpak / Snap / Arch AUR (`click-to-claude`).
+```bash
+ruff check .
+ruff format --check .
+pytest
+python click_claude.py --diagnose
+```
+
+Do not use real passwords, API keys, private window titles, or personal
+screenshots in fixtures or bug reports.
+
+## Pull requests
+
+1. Create a focused branch.
+2. Add or update tests for behavior changes.
+3. Keep browser targeting fail-safe: an unknown window must always be rejected.
+4. Document changes to supported desktops, sessions, or dependencies.
+5. Explain any privacy or clipboard implications in the pull request.
+
+Useful areas include Wayland portal support, undo/redo in the annotation editor,
+accessibility, additional safe browser targets, packaging, and translations.
