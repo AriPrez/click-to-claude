@@ -69,7 +69,8 @@ bash uninstall.sh
 2. Select a screen region.
 3. Add pins and comments, or switch to **Redact Area** and draw masks.
 4. Add an optional general request.
-5. Choose whether to include OCR text and the source-window title.
+5. Choose whether to include OCR text and the source-window title. OCR is off
+   by default and is mainly useful for code, logs, or very small text.
 6. Select **Send to Claude**, review the generated text, then approve the paste.
 7. Review the result in Claude and submit it yourself.
 
@@ -81,7 +82,7 @@ bash uninstall.sh
   program exits.
 - OCR runs only after redactions have been burned into the image.
 - Window-title and OCR context can be disabled independently.
-- OCR is labelled as untrusted reference data in the generated prompt.
+- Optional OCR is labelled as reference data rather than instructions.
 - Paste is allowed only into a Chromium window created with Click to Claude's
   dedicated class and profile.
 - The program does not claim that data was sent; it only reports that paste
