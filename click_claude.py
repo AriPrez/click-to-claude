@@ -10,12 +10,13 @@ import shutil
 import subprocess
 import tempfile
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 APP_NAME = "Click to Claude"
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.5.2"
 APP_WINDOW_CLASS = "ClickToClaude"
 CLAUDE_URL = "https://claude.ai/new"
 CHROME_PROFILE_DIR = Path.home() / ".local" / "share" / "click-to-claude" / "chrome-profile"
@@ -185,6 +186,26 @@ def copy_text_to_clipboard(text):
     return ActionResult(result.returncode == 0, f"Text copied with {backend}.")
 
 
+def copy_text_to_primary(text):
+    """Keep recovery text in the desktop's secondary selection."""
+    backend = clipboard_backend()
+    if not backend:
+        return ActionResult(False, "No secondary clipboard backend is available.")
+    command = (
+        ["xclip", "-selection", "primary", "-t", "text/plain"]
+        if backend == "xclip"
+        else ["wl-copy", "--primary", "--type", "text/plain;charset=utf-8"]
+    )
+    try:
+        result = run_command(command, input=text.encode("utf-8"))
+    except OSError as error:
+        return ActionResult(False, f"Secondary clipboard error: {error}")
+    return ActionResult(
+        result.returncode == 0,
+        f"Recovery text copied with {backend}.",
+    )
+
+
 def get_claude_window():
     """Return only a window created with Click to Claude's dedicated class."""
     if not shutil.which("xdotool"):
@@ -246,8 +267,92 @@ def _xdotool_shell_values(output):
     return values
 
 
+def _color_distance(first, second):
+    return sum(abs(left - right) for left, right in zip(first, second))
+
+
+def _find_composer_center(image):
+    """Locate Claude's wide composer panel without assuming a fixed vertical position."""
+    image = image.convert("RGB")
+    width, height = image.size
+    if width < 240 or height < 320:
+        return None
+
+    sample = image.resize((max(1, width // 4), max(1, height // 4)))
+    background, background_count = Counter(sample.getdata()).most_common(1)[0]
+    if background_count / (sample.width * sample.height) >= 0.96:
+        return None
+
+    center_x = width // 2
+    mask = []
+    for y_position in range(height):
+        colors = [
+            image.getpixel((min(width - 1, max(0, center_x + offset)), y_position))
+            for offset in (-8, 0, 8)
+        ]
+        closest_to_background = min(
+            colors,
+            key=lambda color: _color_distance(color, background),
+        )
+        mask.append(_color_distance(closest_to_background, background) > 12)
+
+    position = 0
+    while position < height:
+        if mask[position]:
+            position += 1
+            continue
+        gap_start = position
+        while position < height and not mask[position]:
+            position += 1
+        if gap_start > 0 and position < height and position - gap_start <= max(6, height // 80):
+            for gap_position in range(gap_start, position):
+                mask[gap_position] = True
+
+    candidates = []
+    position = 0
+    while position < height:
+        if not mask[position]:
+            position += 1
+            continue
+        run_start = position
+        while position < height and mask[position]:
+            position += 1
+        run_end = position - 1
+        run_height = run_end - run_start + 1
+        if run_start < height * 0.22 or not height * 0.06 <= run_height <= height * 0.35:
+            continue
+
+        midpoint = (run_start + run_end) // 2
+        row_positions = range(int(width * 0.08), int(width * 0.92), 4)
+        different_pixels = sum(
+            _color_distance(image.getpixel((x_position, midpoint)), background) > 12
+            for x_position in row_positions
+        )
+        width_ratio = different_pixels / max(1, len(row_positions))
+        if width_ratio >= 0.65:
+            candidates.append((width_ratio * run_height, center_x, midpoint))
+
+    if not candidates:
+        return None
+    _score, target_x, target_y = max(candidates)
+    return target_x, target_y
+
+
+def _window_image(dimensions):
+    try:
+        from PIL import ImageGrab
+
+        left = dimensions["X"]
+        top = dimensions["Y"]
+        right = left + dimensions["WIDTH"]
+        bottom = top + dimensions["HEIGHT"]
+        return ImageGrab.grab(bbox=(left, top, right, bottom))
+    except (KeyError, OSError):
+        return None
+
+
 def focus_claude_composer(window_id):
-    """Focus the lower-center composer area in the verified app window."""
+    """Detect and focus Claude's composer while avoiding blind page clicks."""
     if not activate_window(window_id):
         return False
 
@@ -261,7 +366,7 @@ def focus_claude_composer(window_id):
     dimensions = _xdotool_shell_values(geometry.stdout)
     width = dimensions.get("WIDTH", 0)
     height = dimensions.get("HEIGHT", 0)
-    if width < 240 or height < 320:
+    if width < 240 or height < 320 or "X" not in dimensions or "Y" not in dimensions:
         return False
 
     cursor = run_command(
@@ -272,8 +377,25 @@ def focus_claude_composer(window_id):
     cursor_position = _xdotool_shell_values(cursor.stdout) if cursor.returncode == 0 else {}
 
     run_command(["xdotool", "key", "--window", window_id, "Escape"])
-    target_x = width // 2
-    target_y = max(120, height - 145)
+    target = None
+    reloaded_blank_page = False
+    for _attempt in range(16):
+        image = _window_image(dimensions)
+        if image is not None:
+            target = _find_composer_center(image)
+            if target:
+                break
+            sample = image.resize((max(1, image.width // 8), max(1, image.height // 8)))
+            _color, count = Counter(sample.convert("RGB").getdata()).most_common(1)[0]
+            is_blank = count / (sample.width * sample.height) >= 0.96
+            if is_blank and not reloaded_blank_page:
+                run_command(["xdotool", "key", "--window", window_id, "ctrl+r"])
+                reloaded_blank_page = True
+        time.sleep(0.5)
+
+    if not target:
+        return False
+    target_x, target_y = target
     focused = run_command(
         [
             "xdotool",
@@ -364,13 +486,22 @@ def paste_in_claude(wid=None, prompt_text=None, image_path=None):
 
     if not window_has_expected_class(target_wid):
         return ActionResult(False, "Paste blocked: the target is not Click to Claude.")
+
+    recovery_text = copy_text_to_primary(prompt_text) if prompt_text else None
+    recovery_ready = bool(recovery_text and recovery_text.success)
+
+    def failure(message):
+        if recovery_ready:
+            message += " Fallback: Ctrl+V pastes the image; Shift+Insert pastes the review."
+        return ActionResult(False, message)
+
     if not focus_claude_composer(target_wid):
-        return ActionResult(False, "Could not focus the Claude message composer.")
+        return failure("Could not detect the Claude message composer.")
     time.sleep(0.35)
 
     image_paste = run_command(["xdotool", "key", "--window", target_wid, "ctrl+v"])
     if image_paste.returncode != 0:
-        return ActionResult(False, "The image paste command failed.")
+        return failure("The image paste command failed.")
     time.sleep(IMAGE_PASTE_SETTLE_SECONDS)
 
     if prompt_text:
@@ -378,21 +509,22 @@ def paste_in_claude(wid=None, prompt_text=None, image_path=None):
         if not copied.success:
             if image_path:
                 copy_image_to_clipboard(image_path)
-            return copied
+            return failure(copied.message)
         time.sleep(0.25)
         text_paste = run_command(["xdotool", "key", "--window", target_wid, "ctrl+v"])
         if text_paste.returncode != 0:
             if image_path:
                 copy_image_to_clipboard(image_path)
-            return ActionResult(False, "The prompt paste command failed.")
+            return failure("The prompt paste command failed.")
         time.sleep(TEXT_PASTE_SETTLE_SECONDS)
 
     if image_path:
         restored = copy_image_to_clipboard(image_path)
         if restored.success:
+            recovery_message = " Shift+Insert restores the review text." if recovery_ready else ""
             return ActionResult(
                 True,
-                "Paste commands completed; the PNG image remains in the clipboard.",
+                f"Paste commands completed; Ctrl+V restores the PNG image.{recovery_message}",
             )
     return ActionResult(True, "Image and prompt paste commands completed.")
 
@@ -965,9 +1097,15 @@ def main():
             browser = open_or_focus_claude()
             if not browser.success:
                 print(browser.message)
+                recovery = copy_text_to_primary(prompt_text) if prompt_text else None
+                recovery_hint = (
+                    " Then use Shift+Insert for the review."
+                    if recovery and recovery.success
+                    else ""
+                )
                 send_notification(
                     APP_NAME,
-                    "Image copied. Open Claude and paste it manually.",
+                    f"Image copied. Open Claude and use Ctrl+V.{recovery_hint}",
                 )
                 return 1
 
@@ -983,7 +1121,7 @@ def main():
 
             send_notification(
                 f"{APP_NAME} 🚀",
-                "Paste completed. The image remains in the clipboard as a fallback.",
+                "Paste completed. Fallback: Ctrl+V image, then Shift+Insert review.",
             )
             return 0
     except OSError as error:
