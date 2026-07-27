@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import click_claude
 
@@ -37,6 +37,57 @@ def test_paste_is_blocked_for_an_unverified_window(_window_check):
 
     assert not result.success
     assert "blocked" in result.message.lower()
+
+
+def test_xdotool_shell_values_only_accepts_integer_fields():
+    output = "WINDOW=42\nX=120\nY=-20\nSCREEN=0\nBROKEN=value\n"
+
+    assert click_claude._xdotool_shell_values(output) == {
+        "WINDOW": 42,
+        "X": 120,
+        "Y": -20,
+        "SCREEN": 0,
+    }
+
+
+@patch("click_claude.time.sleep")
+@patch("click_claude.copy_image_to_clipboard")
+@patch("click_claude.copy_text_to_clipboard")
+@patch("click_claude.run_command")
+@patch("click_claude.focus_claude_composer", return_value=True)
+@patch("click_claude.window_has_expected_class", return_value=True)
+def test_paste_focuses_composer_and_restores_image_clipboard(
+    _window_check,
+    focus_composer,
+    run_command,
+    copy_text,
+    copy_image,
+    _sleep,
+):
+    run_command.return_value = MagicMock(returncode=0)
+    copy_text.return_value = click_claude.ActionResult(True, "text copied")
+    copy_image.return_value = click_claude.ActionResult(True, "image restored")
+
+    result = click_claude.paste_in_claude(
+        "42",
+        prompt_text="Explain the diagram",
+        image_path="/tmp/capture.png",
+    )
+
+    assert result.success
+    assert "remains in the clipboard" in result.message
+    focus_composer.assert_called_once_with("42")
+    copy_text.assert_called_once_with("Explain the diagram")
+    copy_image.assert_called_once_with("/tmp/capture.png")
+    paste_commands = [
+        call.args[0]
+        for call in run_command.call_args_list
+        if call.args[0][:2] == ["xdotool", "key"]
+    ]
+    assert paste_commands == [
+        ["xdotool", "key", "--window", "42", "ctrl+v"],
+        ["xdotool", "key", "--window", "42", "ctrl+v"],
+    ]
 
 
 @patch("click_claude.shutil.which", return_value=None)

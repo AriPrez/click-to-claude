@@ -15,10 +15,12 @@ from datetime import datetime
 from pathlib import Path
 
 APP_NAME = "Click to Claude"
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 APP_WINDOW_CLASS = "ClickToClaude"
 CLAUDE_URL = "https://claude.ai/new"
 CHROME_PROFILE_DIR = Path.home() / ".local" / "share" / "click-to-claude" / "chrome-profile"
+IMAGE_PASTE_SETTLE_SECONDS = 1.8
+TEXT_PASTE_SETTLE_SECONDS = 0.8
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,29 @@ def clipboard_backend():
     return None
 
 
+def clipboard_contains_image():
+    """Confirm that the current clipboard advertises PNG image data."""
+    backend = clipboard_backend()
+    try:
+        if backend == "xclip":
+            result = run_command(
+                ["xclip", "-selection", "clipboard", "-t", "TARGETS", "-o"],
+                capture_output=True,
+                text=True,
+            )
+        elif backend == "wl-copy" and shutil.which("wl-paste"):
+            result = run_command(
+                ["wl-paste", "--list-types"],
+                capture_output=True,
+                text=True,
+            )
+        else:
+            return False
+    except OSError:
+        return False
+    return result.returncode == 0 and "image/png" in result.stdout.casefold()
+
+
 def copy_image_to_clipboard(image_path):
     """Copy a PNG image to the available desktop clipboard."""
     if not os.path.exists(image_path):
@@ -134,7 +159,13 @@ def copy_image_to_clipboard(image_path):
                 )
     except OSError as error:
         return ActionResult(False, f"Clipboard error: {error}")
-    return ActionResult(result.returncode == 0, f"Image copied with {backend}.")
+    if result.returncode != 0:
+        return ActionResult(False, f"{backend} could not copy the image.")
+    for _attempt in range(5):
+        if clipboard_contains_image():
+            return ActionResult(True, f"PNG image copied and verified with {backend}.")
+        time.sleep(0.08)
+    return ActionResult(False, "The clipboard did not expose the capture as image/png.")
 
 
 def copy_text_to_clipboard(text):
@@ -206,6 +237,70 @@ def activate_window(window_id):
     return result.returncode == 0
 
 
+def _xdotool_shell_values(output):
+    values = {}
+    for line in output.splitlines():
+        key, separator, value = line.partition("=")
+        if separator and value.strip().lstrip("-").isdigit():
+            values[key.strip()] = int(value.strip())
+    return values
+
+
+def focus_claude_composer(window_id):
+    """Focus the lower-center composer area in the verified app window."""
+    if not activate_window(window_id):
+        return False
+
+    geometry = run_command(
+        ["xdotool", "getwindowgeometry", "--shell", window_id],
+        capture_output=True,
+        text=True,
+    )
+    if geometry.returncode != 0:
+        return False
+    dimensions = _xdotool_shell_values(geometry.stdout)
+    width = dimensions.get("WIDTH", 0)
+    height = dimensions.get("HEIGHT", 0)
+    if width < 240 or height < 320:
+        return False
+
+    cursor = run_command(
+        ["xdotool", "getmouselocation", "--shell"],
+        capture_output=True,
+        text=True,
+    )
+    cursor_position = _xdotool_shell_values(cursor.stdout) if cursor.returncode == 0 else {}
+
+    run_command(["xdotool", "key", "--window", window_id, "Escape"])
+    target_x = width // 2
+    target_y = max(120, height - 145)
+    focused = run_command(
+        [
+            "xdotool",
+            "mousemove",
+            "--sync",
+            "--window",
+            window_id,
+            str(target_x),
+            str(target_y),
+            "click",
+            "1",
+        ]
+    )
+
+    if "X" in cursor_position and "Y" in cursor_position:
+        run_command(
+            [
+                "xdotool",
+                "mousemove",
+                "--sync",
+                str(cursor_position["X"]),
+                str(cursor_position["Y"]),
+            ]
+        )
+    return focused.returncode == 0
+
+
 def open_or_focus_claude():
     """Open or focus the isolated Claude web-app window."""
     wid = get_claude_window()
@@ -261,7 +356,7 @@ def open_or_focus_claude():
     )
 
 
-def paste_in_claude(wid=None, prompt_text=None):
+def paste_in_claude(wid=None, prompt_text=None, image_path=None):
     """Paste only into the positively identified Click to Claude window."""
     target_wid = wid or get_claude_window()
     if not target_wid:
@@ -269,23 +364,36 @@ def paste_in_claude(wid=None, prompt_text=None):
 
     if not window_has_expected_class(target_wid):
         return ActionResult(False, "Paste blocked: the target is not Click to Claude.")
-    if not activate_window(target_wid):
-        return ActionResult(False, "Could not activate the Claude window.")
-    time.sleep(0.5)
+    if not focus_claude_composer(target_wid):
+        return ActionResult(False, "Could not focus the Claude message composer.")
+    time.sleep(0.35)
 
     image_paste = run_command(["xdotool", "key", "--window", target_wid, "ctrl+v"])
     if image_paste.returncode != 0:
         return ActionResult(False, "The image paste command failed.")
-    time.sleep(0.6)
+    time.sleep(IMAGE_PASTE_SETTLE_SECONDS)
 
     if prompt_text:
         copied = copy_text_to_clipboard(prompt_text)
         if not copied.success:
+            if image_path:
+                copy_image_to_clipboard(image_path)
             return copied
-        time.sleep(0.2)
+        time.sleep(0.25)
         text_paste = run_command(["xdotool", "key", "--window", target_wid, "ctrl+v"])
         if text_paste.returncode != 0:
+            if image_path:
+                copy_image_to_clipboard(image_path)
             return ActionResult(False, "The prompt paste command failed.")
+        time.sleep(TEXT_PASTE_SETTLE_SECONDS)
+
+    if image_path:
+        restored = copy_image_to_clipboard(image_path)
+        if restored.success:
+            return ActionResult(
+                True,
+                "Paste commands completed; the PNG image remains in the clipboard.",
+            )
     return ActionResult(True, "Image and prompt paste commands completed.")
 
 
@@ -866,6 +974,7 @@ def main():
             pasted = paste_in_claude(
                 browser.window_id,
                 prompt_text=prompt_text,
+                image_path=image_path,
             )
             if not pasted.success:
                 print(pasted.message)
@@ -874,7 +983,7 @@ def main():
 
             send_notification(
                 f"{APP_NAME} 🚀",
-                "Image and prompt pasted. Review them before sending.",
+                "Paste completed. The image remains in the clipboard as a fallback.",
             )
             return 0
     except OSError as error:
