@@ -8,7 +8,13 @@ No Anthropic API key is required.
 
 - Select exactly the part of the screen you want to discuss.
 - Add numbered pins with one question per location.
-- Redact secrets before OCR or clipboard transfer.
+- See a zoomed Pin Lens thumbnail for every numbered point.
+- Move, reorder, or remove pins individually.
+- Draw arrows and highlights alongside privacy masks.
+- Undo and redo annotation changes.
+- Zoom and pan without changing the exported screenshot resolution.
+- Export the annotated result as a standalone PNG.
+- Redact secrets before clipboard transfer.
 - Add a general request and optional source-window context.
 - Review the exact generated text before it is pasted.
 - Keep automatic paste isolated from ordinary browser windows.
@@ -41,7 +47,7 @@ bash install.sh
 
 The installer:
 
-1. Installs the screenshot, clipboard, OCR, Tkinter, and Pillow dependencies.
+1. Installs the screenshot, clipboard, Tkinter, and Pillow dependencies.
 2. Installs `click-to-claude` into `~/.local/bin`.
 3. Adds the desktop launcher.
 4. Registers `Super+C` on GNOME-based desktops.
@@ -68,21 +74,34 @@ bash uninstall.sh
 1. Press `Super+C`, or run `click-to-claude`.
 2. Select a screen region.
 3. Add pins and comments, or switch to **Redact Area** and draw masks.
-4. Add an optional general request.
-5. Choose whether to include OCR text and the source-window title. OCR is off
-   by default and is mainly useful for code, logs, or very small text.
-6. Select **Send to Claude**, review the generated text, then approve the paste.
-7. Review the result in Claude and submit it yourself.
+4. Use **Select** to move pins or select any annotation for deletion.
+5. Add arrows, highlights, and an optional general request.
+6. Choose whether to include the source-window title.
+7. Select **Review & Paste**, inspect the generated text, then approve the paste.
+8. Review the result in Claude and submit it yourself.
 
-`Esc` cancels the editor. `Ctrl+Enter` opens the final review.
+### Visual Prompt Studio shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `V` | Select |
+| `P` | Add pin |
+| `A` | Arrow |
+| `H` | Highlight |
+| `R` | Redact |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| `Delete` | Remove selected annotation |
+| Mouse wheel | Zoom |
+| Middle-button drag | Pan |
+| `Ctrl+Enter` | Open final review |
+| `Ctrl+S` | Export annotated PNG |
+| `Esc` | Cancel |
 
 ## Privacy and safety
 
 - Captures are created inside a private temporary directory and deleted when the
   program exits.
-- OCR runs only after redactions have been burned into the image.
-- Window-title and OCR context can be disabled independently.
-- Optional OCR is labelled as reference data rather than instructions.
+- Window-title context can be disabled before review.
 - Paste is allowed only into a Chromium window created with Click to Claude's
   dedicated class and profile.
 - The program does not claim that data was sent; it only reports that paste
@@ -110,7 +129,8 @@ The CI runs linting and tests across Python 3.10, 3.12, and 3.13.
 
 - Full Wayland automation is restricted by the compositor's security model.
 - Automatic paste currently targets Chromium-family browsers.
-- The annotation editor has reset, but not yet per-action undo/redo.
+- Text labels, freehand drawing, and automatic redaction suggestions are not yet
+  implemented.
 - Clipboard automation can confirm the operating-system commands, not that the
   Claude composer accepted every item.
 

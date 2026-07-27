@@ -5,13 +5,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/click_claude.py"
+EDITOR_PATH="$SCRIPT_DIR/editor_ui.py"
+INSTALL_DIR="$HOME/.local/lib/click-to-claude"
+INSTALL_MAIN="$INSTALL_DIR/click_claude.py"
 INSTALL_BIN="$HOME/.local/bin/click-to-claude"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_PATH="$DESKTOP_DIR/click-to-claude.desktop"
 LEGACY_DESKTOP_PATH="$DESKTOP_DIR/click_claude.desktop"
 
-if [[ ! -f "$SCRIPT_PATH" ]]; then
-    echo "Error: click_claude.py was not found next to install.sh." >&2
+if [[ ! -f "$SCRIPT_PATH" || ! -f "$EDITOR_PATH" ]]; then
+    echo "Error: click_claude.py or editor_ui.py is missing." >&2
     exit 1
 fi
 
@@ -31,8 +34,6 @@ base_packages=(
     python3-pil.imagetk
     python3-tk
     scrot
-    tesseract-ocr
-    tesseract-ocr-fra
     x11-utils
     xclip
     xdotool
@@ -47,7 +48,14 @@ sudo apt-get install -y grim slurp wl-clipboard || {
     echo "Wayland helper packages were unavailable; X11 support is still installed."
 }
 
-install -Dm755 "$SCRIPT_PATH" "$INSTALL_BIN"
+install -Dm755 "$SCRIPT_PATH" "$INSTALL_MAIN"
+install -Dm644 "$EDITOR_PATH" "$INSTALL_DIR/editor_ui.py"
+mkdir -p "$(dirname -- "$INSTALL_BIN")"
+{
+    printf '#!/usr/bin/env bash\n'
+    printf 'exec python3 %q "$@"\n' "$INSTALL_MAIN"
+} > "$INSTALL_BIN"
+chmod 755 "$INSTALL_BIN"
 mkdir -p "$DESKTOP_DIR"
 sed "s|^Exec=.*|Exec=$INSTALL_BIN|" \
     "$SCRIPT_DIR/click_claude.desktop" > "$DESKTOP_PATH"

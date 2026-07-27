@@ -33,4 +33,5 @@ screenshots in fixtures or bug reports.
 5. Explain any privacy or clipboard implications in the pull request.
 
 Useful areas include Wayland portal support, undo/redo in the annotation editor,
-accessibility, additional safe browser targets, packaging, and translations.
+accessibility, text/freehand tools, automatic redaction suggestions, additional
+safe browser targets, packaging, and translations.

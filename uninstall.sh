@@ -3,11 +3,13 @@
 set -euo pipefail
 
 INSTALL_BIN="$HOME/.local/bin/click-to-claude"
+INSTALL_DIR="$HOME/.local/lib/click-to-claude"
 DESKTOP_PATH="$HOME/.local/share/applications/click-to-claude.desktop"
 LEGACY_DESKTOP_PATH="$HOME/.local/share/applications/click_claude.desktop"
 PROFILE_DIR="$HOME/.local/share/click-to-claude"
 
 rm -f -- "$INSTALL_BIN" "$DESKTOP_PATH" "$LEGACY_DESKTOP_PATH"
+rm -r -f -- "$INSTALL_DIR"
 
 if command -v gsettings >/dev/null 2>&1; then
     python3 - <<'PY'

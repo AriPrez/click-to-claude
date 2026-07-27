@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "click-to-claude"
-version = "0.2.0"
+version = "0.3.1"
 description = "Annotate a Linux screenshot and paste it safely into Claude."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,7 +23,7 @@ dev = [
 click-to-claude = "click_claude:main"
 
 [tool.setuptools]
-py-modules = ["click_claude"]
+py-modules = ["click_claude", "editor_ui"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

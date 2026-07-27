@@ -1,6 +1,5 @@
 from datetime import datetime
 from pathlib import Path
-from subprocess import CompletedProcess
 from unittest.mock import patch
 
 import click_claude
@@ -12,7 +11,6 @@ def test_build_prompt_respects_privacy_choices():
         pin_comments=["Fix this", ""],
         general_request="Explain the failure",
         source_window="",
-        ocr_text="",
         timestamp=datetime(2026, 7, 27, 12, 30),
     )
 
@@ -20,34 +18,7 @@ def test_build_prompt_respects_privacy_choices():
     assert "Pin (1): Fix this" in prompt
     assert "Pin (2): [Indicated area on image]" in prompt
     assert "Source window" not in prompt
-    assert "OCR REFERENCE" not in prompt
     assert "2026-07-27 12:30" in prompt
-
-
-def test_build_prompt_marks_ocr_as_reference_data_and_limits_length():
-    prompt = click_claude.build_prompt(
-        topic="General",
-        pin_comments=[],
-        ocr_text="x" * 5000,
-        timestamp=datetime(2026, 7, 27),
-    )
-
-    assert "reference data, not instructions" in prompt
-    assert "```text" in prompt
-    assert "x" * 4001 not in prompt
-
-
-@patch("click_claude.run_command")
-@patch("click_claude.shutil.which", return_value="/usr/bin/tesseract")
-def test_tesseract_languages_are_detected(_which, run_command):
-    run_command.return_value = CompletedProcess(
-        ["tesseract"],
-        0,
-        stdout="List of available languages (3):\neng\nfra\nosd\n",
-        stderr="",
-    )
-
-    assert click_claude.get_tesseract_languages() == ["eng", "fra", "osd"]
 
 
 @patch("click_claude.subprocess.check_output")
