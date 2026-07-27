@@ -189,6 +189,7 @@ Click to Claude verifies the PNG clipboard data, focuses the message composer,
 and waits for the image paste before adding text. It then restores the image to
 the clipboard. If the website still misses an attachment, click inside the
 Claude composer and press `Ctrl+V`; the annotated PNG is ready to paste again.
+Press `Shift+Insert` immediately afterward to recover the reviewed prompt text.
 
 Run `click-to-claude --diagnose` and include its sanitized output in a bug
 report. Remove usernames, window titles, paths, or other private information

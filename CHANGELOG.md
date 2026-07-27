@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.2 - 2026-07-27
+
+### Fixed
+
+- Detect the Claude composer from the rendered window instead of clicking a
+  fixed vertical position that no longer matches Claude's new-chat layout.
+- Reload a uniformly blank Claude page once, then wait for the composer before
+  attempting any paste.
+- Keep the reviewed prompt in the desktop's secondary selection while the PNG
+  remains in the regular clipboard, enabling full manual recovery without
+  writing private prompt text to disk.
+
 ## 0.5.1 - 2026-07-27
 
 ### Fixed

@@ -2,6 +2,8 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from PIL import Image, ImageDraw
+
 import click_claude
 
 
@@ -50,9 +52,24 @@ def test_xdotool_shell_values_only_accepts_integer_fields():
     }
 
 
+def test_composer_detection_finds_a_wide_panel_at_any_vertical_position():
+    image = Image.new("RGB", (725, 1003), "#20201f")
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((14, 351, 700, 506), radius=28, fill="#2c2c2a")
+
+    assert click_claude._find_composer_center(image) == (362, 428)
+
+
+def test_composer_detection_rejects_a_blank_page():
+    image = Image.new("RGB", (725, 1003), "white")
+
+    assert click_claude._find_composer_center(image) is None
+
+
 @patch("click_claude.time.sleep")
 @patch("click_claude.copy_image_to_clipboard")
 @patch("click_claude.copy_text_to_clipboard")
+@patch("click_claude.copy_text_to_primary")
 @patch("click_claude.run_command")
 @patch("click_claude.focus_claude_composer", return_value=True)
 @patch("click_claude.window_has_expected_class", return_value=True)
@@ -60,11 +77,13 @@ def test_paste_focuses_composer_and_restores_image_clipboard(
     _window_check,
     focus_composer,
     run_command,
+    copy_primary,
     copy_text,
     copy_image,
     _sleep,
 ):
     run_command.return_value = MagicMock(returncode=0)
+    copy_primary.return_value = click_claude.ActionResult(True, "recovery copied")
     copy_text.return_value = click_claude.ActionResult(True, "text copied")
     copy_image.return_value = click_claude.ActionResult(True, "image restored")
 
@@ -75,8 +94,10 @@ def test_paste_focuses_composer_and_restores_image_clipboard(
     )
 
     assert result.success
-    assert "remains in the clipboard" in result.message
+    assert "Ctrl+V restores the PNG image" in result.message
+    assert "Shift+Insert restores the review text" in result.message
     focus_composer.assert_called_once_with("42")
+    copy_primary.assert_called_once_with("Explain the diagram")
     copy_text.assert_called_once_with("Explain the diagram")
     copy_image.assert_called_once_with("/tmp/capture.png")
     paste_commands = [
