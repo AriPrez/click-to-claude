@@ -8,26 +8,26 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 COLORS = {
-    "window": "#080C14",
-    "surface": "#0F1623",
-    "surface_raised": "#151F30",
-    "surface_hover": "#1B2940",
-    "canvas": "#05080E",
-    "border": "#22324A",
-    "border_active": "#7C5CFF",
-    "primary": "#7C5CFF",
-    "primary_hover": "#9278FF",
-    "cyan": "#22D3EE",
+    "window": "#111318",
+    "surface": "#171A21",
+    "surface_raised": "#1D212A",
+    "surface_hover": "#252A35",
+    "canvas": "#0B0D11",
+    "border": "#2B303B",
+    "border_active": "#5B7FFF",
+    "primary": "#5B7FFF",
+    "primary_hover": "#7292FF",
+    "cyan": "#38BDF8",
     "success": "#4ADE80",
-    "danger": "#FF5C7A",
-    "warning": "#FACC15",
-    "text": "#F5F7FF",
-    "muted": "#94A3B8",
-    "dim": "#64748B",
+    "danger": "#F87171",
+    "warning": "#FBBF24",
+    "text": "#F2F4F7",
+    "muted": "#A5ADBA",
+    "dim": "#737B89",
 }
 
-FONT_UI = "Inter"
-FONT_MONO = "JetBrains Mono"
+FONT_UI = "Helvetica"
+FONT_MONO = "Courier"
 
 
 class ScreenshotEditor:
@@ -67,7 +67,7 @@ class ScreenshotEditor:
         self.image_offset_y = 0
 
         self.root = tk.Tk()
-        self.root.title("Click to Claude — Visual Prompt Studio")
+        self.root.title("Click to Claude — Screenshot editor")
         self.root.configure(bg=COLORS["window"])
         self.root.attributes("-topmost", True)
         self.root.minsize(980, 620)
@@ -90,7 +90,7 @@ class ScreenshotEditor:
         )
 
         self.mode = tk.StringVar(value="pin")
-        self.topic = tk.StringVar(value="🐛 Debug & Code Fix")
+        self.topic = tk.StringVar(value="Debug & code fix")
         self.include_title = tk.BooleanVar(value=True)
         self.status_text = tk.StringVar()
         self.privacy_text = tk.StringVar()
@@ -111,32 +111,33 @@ class ScreenshotEditor:
         except tk.TclError:
             pass
         style.configure(
-            "Tech.TCombobox",
+            "App.TCombobox",
             fieldbackground=COLORS["surface_raised"],
             background=COLORS["surface_raised"],
             foreground=COLORS["text"],
-            arrowcolor=COLORS["cyan"],
+            arrowcolor=COLORS["muted"],
             bordercolor=COLORS["border"],
             lightcolor=COLORS["border"],
             darkcolor=COLORS["border"],
-            padding=7,
+            padding=9,
+            font=(FONT_UI, 9),
         )
         style.map(
-            "Tech.TCombobox",
+            "App.TCombobox",
             fieldbackground=[("readonly", COLORS["surface_raised"])],
             foreground=[("readonly", COLORS["text"])],
             selectbackground=[("readonly", COLORS["surface_raised"])],
             selectforeground=[("readonly", COLORS["text"])],
         )
         style.configure(
-            "Tech.Vertical.TScrollbar",
+            "App.Vertical.TScrollbar",
             background=COLORS["border"],
             troughcolor=COLORS["surface"],
             bordercolor=COLORS["surface"],
             arrowcolor=COLORS["muted"],
         )
         style.configure(
-            "Tech.Horizontal.TScrollbar",
+            "App.Horizontal.TScrollbar",
             background=COLORS["border"],
             troughcolor=COLORS["surface"],
             bordercolor=COLORS["surface"],
@@ -154,38 +155,39 @@ class ScreenshotEditor:
         header = tk.Frame(
             self.root,
             bg=COLORS["surface"],
-            height=72,
+            height=64,
             highlightbackground=COLORS["border"],
-            highlightthickness=0,
+            highlightthickness=1,
         )
         header.grid(row=0, column=0, sticky="ew")
         header.grid_propagate(False)
         header.grid_columnconfigure(1, weight=1)
 
         brand = tk.Frame(header, bg=COLORS["surface"])
-        brand.grid(row=0, column=0, padx=20, pady=12, sticky="w")
+        brand.grid(row=0, column=0, padx=20, pady=10, sticky="w")
         tk.Label(
             brand,
-            text="●",
+            text="C",
             bg=COLORS["surface"],
-            fg=COLORS["cyan"],
-            font=(FONT_UI, 17, "bold"),
-        ).pack(side=tk.LEFT, padx=(0, 10))
+            fg=COLORS["text"],
+            font=(FONT_UI, 15, "bold"),
+            width=2,
+        ).pack(side=tk.LEFT, padx=(0, 9))
         title_stack = tk.Frame(brand, bg=COLORS["surface"])
         title_stack.pack(side=tk.LEFT)
         tk.Label(
             title_stack,
-            text="CLICK TO CLAUDE",
+            text="Click to Claude",
             bg=COLORS["surface"],
             fg=COLORS["text"],
-            font=(FONT_UI, 13, "bold"),
+            font=(FONT_UI, 12, "bold"),
         ).pack(anchor="w")
         tk.Label(
             title_stack,
-            text="VISUAL PROMPT STUDIO",
+            text="Screenshot editor",
             bg=COLORS["surface"],
-            fg=COLORS["primary_hover"],
-            font=(FONT_MONO, 8, "bold"),
+            fg=COLORS["dim"],
+            font=(FONT_UI, 8),
         ).pack(anchor="w")
 
         context = tk.Frame(header, bg=COLORS["surface"])
@@ -193,30 +195,29 @@ class ScreenshotEditor:
         source_title = self.active_window_title.strip() or "Linux application"
         if len(source_title) > 28:
             source_title = f"{source_title[:25]}..."
-        self._chip(
-            context,
-            f"SOURCE · {source_title}",
-            COLORS["primary_hover"],
-        ).pack(side=tk.LEFT, padx=4)
-        self._chip(
+        self._meta_label(context, source_title).pack(side=tk.LEFT, padx=7)
+        self._meta_label(
             context,
             f"{self.original_image.width} × {self.original_image.height}",
-            COLORS["cyan"],
-        ).pack(side=tk.LEFT, padx=4)
-        self._chip(context, "LOCAL EDIT", COLORS["success"]).pack(side=tk.LEFT, padx=4)
+            mono=True,
+        ).pack(side=tk.LEFT, padx=7)
+        self._meta_label(context, "●  Processed locally", accent=True).pack(
+            side=tk.LEFT,
+            padx=7,
+        )
 
         actions = tk.Frame(header, bg=COLORS["surface"])
         actions.grid(row=0, column=2, padx=18, sticky="e")
         self.undo_button = self._button(
             actions,
-            "UNDO",
+            "Undo",
             self._undo,
             compact=True,
         )
         self.undo_button.pack(side=tk.LEFT, padx=4)
         self.redo_button = self._button(
             actions,
-            "REDO",
+            "Redo",
             self._redo,
             compact=True,
         )
@@ -231,7 +232,7 @@ class ScreenshotEditor:
 
     def _build_workspace(self):
         workspace = tk.Frame(self.root, bg=COLORS["window"])
-        workspace.grid(row=1, column=0, sticky="nsew", padx=12, pady=12)
+        workspace.grid(row=1, column=0, sticky="nsew", padx=14, pady=14)
         workspace.grid_rowconfigure(0, weight=1)
         workspace.grid_columnconfigure(1, weight=1)
 
@@ -243,28 +244,20 @@ class ScreenshotEditor:
         rail = tk.Frame(
             parent,
             bg=COLORS["surface"],
-            width=82,
+            width=68,
             highlightbackground=COLORS["border"],
             highlightthickness=1,
         )
         rail.grid(row=0, column=0, sticky="ns", padx=(0, 10))
         rail.grid_propagate(False)
 
-        tk.Label(
-            rail,
-            text="TOOLS",
-            bg=COLORS["surface"],
-            fg=COLORS["dim"],
-            font=(FONT_MONO, 8, "bold"),
-        ).pack(pady=(14, 8))
-
         tools = (
-            ("select", "V", "SELECT"),
-            ("pin", "⊕", "PIN"),
-            ("arrow", ">", "ARROW"),
-            ("highlight", "H", "MARK"),
-            ("redact", "R", "HIDE"),
-            ("pan", "M", "PAN"),
+            ("select", "↖", "Select"),
+            ("pin", "◎", "Pin"),
+            ("arrow", "↗", "Arrow"),
+            ("highlight", "▱", "Mark"),
+            ("redact", "▰", "Hide"),
+            ("pan", "✥", "Pan"),
         )
         for mode, icon, label in tools:
             button = tk.Button(
@@ -277,33 +270,33 @@ class ScreenshotEditor:
                 activeforeground=COLORS["text"],
                 relief=tk.FLAT,
                 bd=0,
-                width=7,
+                width=6,
                 height=3,
                 cursor="hand2",
-                font=(FONT_UI, 9, "bold"),
+                font=(FONT_UI, 9),
             )
-            button.pack(fill=tk.X, padx=7, pady=3)
+            button.pack(fill=tk.X, padx=6, pady=(8 if mode == "select" else 2, 2))
             self.tool_buttons[mode] = button
 
         tk.Frame(rail, bg=COLORS["border"], height=1).pack(
             fill=tk.X,
-            padx=12,
-            pady=10,
+            padx=14,
+            pady=(12, 9),
         )
         tk.Label(
             rail,
-            text="⌘Z\nUNDO",
+            text="⌘Z  Undo",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
-            font=(FONT_MONO, 7),
+            font=(FONT_UI, 7),
             justify=tk.CENTER,
         ).pack(pady=4)
         tk.Label(
             rail,
-            text="DEL\nREMOVE",
+            text="Del  Remove",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
-            font=(FONT_MONO, 7),
+            font=(FONT_UI, 7),
             justify=tk.CENTER,
         ).pack(pady=4)
 
@@ -324,14 +317,14 @@ class ScreenshotEditor:
         canvas_header.grid_columnconfigure(1, weight=1)
         tk.Label(
             canvas_header,
-            text="CAPTURE CANVAS",
+            text="Screenshot",
             bg=COLORS["surface_raised"],
-            fg=COLORS["muted"],
-            font=(FONT_MONO, 8, "bold"),
+            fg=COLORS["text"],
+            font=(FONT_UI, 10, "bold"),
         ).grid(row=0, column=0, padx=14, pady=12, sticky="w")
         tk.Label(
             canvas_header,
-            text="Wheel: precision zoom  •  Middle drag: pan",
+            text="Scroll to zoom  ·  Middle-drag to pan",
             bg=COLORS["surface_raised"],
             fg=COLORS["dim"],
             font=(FONT_UI, 8),
@@ -352,13 +345,13 @@ class ScreenshotEditor:
             viewport,
             orient=tk.VERTICAL,
             command=self.canvas.yview,
-            style="Tech.Vertical.TScrollbar",
+            style="App.Vertical.TScrollbar",
         )
         horizontal = ttk.Scrollbar(
             viewport,
             orient=tk.HORIZONTAL,
             command=self.canvas.xview,
-            style="Tech.Horizontal.TScrollbar",
+            style="App.Horizontal.TScrollbar",
         )
         self.canvas.configure(
             yscrollcommand=vertical.set,
@@ -378,7 +371,7 @@ class ScreenshotEditor:
         zoom_bar.grid_propagate(False)
         self._button(
             zoom_bar,
-            "−",
+            "-",
             lambda: self._set_zoom(self.zoom - 0.2),
             compact=True,
         ).pack(side=tk.LEFT, padx=(12, 4), pady=5)
@@ -417,7 +410,7 @@ class ScreenshotEditor:
         inspector = tk.Frame(
             parent,
             bg=COLORS["surface"],
-            width=350,
+            width=372,
             highlightbackground=COLORS["border"],
             highlightthickness=1,
         )
@@ -431,17 +424,17 @@ class ScreenshotEditor:
         heading.grid_propagate(False)
         tk.Label(
             heading,
-            text="PROMPT INSPECTOR",
+            text="Questions",
             bg=COLORS["surface_raised"],
-            fg=COLORS["muted"],
-            font=(FONT_MONO, 8, "bold"),
+            fg=COLORS["text"],
+            font=(FONT_UI, 10, "bold"),
         ).pack(side=tk.LEFT, padx=14, pady=12)
         self.pin_count_badge = tk.Label(
             heading,
-            text="0 PINS",
-            bg=COLORS["primary"],
-            fg=COLORS["text"],
-            font=(FONT_MONO, 7, "bold"),
+            text="0 pins",
+            bg=COLORS["surface_hover"],
+            fg=COLORS["muted"],
+            font=(FONT_UI, 8),
             padx=8,
             pady=3,
         )
@@ -451,44 +444,44 @@ class ScreenshotEditor:
         prompt_panel.grid(row=1, column=0, sticky="ew")
         tk.Label(
             prompt_panel,
-            text="GOAL",
+            text="Task",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
-            font=(FONT_MONO, 8, "bold"),
+            font=(FONT_UI, 8, "bold"),
         ).pack(anchor="w")
         topics = (
-            "🐛 Debug & Code Fix",
-            "💻 Refactoring & Optimization",
-            "🎨 UI Design & Layout",
-            "♿ Accessibility Review",
-            "📄 Text Explanation & Docs",
-            "⚙️ Terminal / Log Analysis",
-            "🩺 Medical Diagram Explanation",
-            "🔬 Scientific Figure Analysis",
-            "💡 General Question",
+            "Debug & code fix",
+            "Refactoring & optimization",
+            "UI design & layout",
+            "Accessibility review",
+            "Text explanation & documentation",
+            "Terminal & log analysis",
+            "Medical diagram explanation",
+            "Scientific figure analysis",
+            "General question",
         )
         ttk.Combobox(
             prompt_panel,
             textvariable=self.topic,
             values=topics,
             state="readonly",
-            style="Tech.TCombobox",
+            style="App.TCombobox",
         ).pack(fill=tk.X, pady=(4, 10))
 
         tk.Label(
             prompt_panel,
-            text="GENERAL REQUEST",
+            text="Instructions",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
-            font=(FONT_MONO, 8, "bold"),
+            font=(FONT_UI, 8, "bold"),
         ).pack(anchor="w")
         self.general_request = tk.Text(
             prompt_panel,
             height=3,
             wrap=tk.WORD,
-            bg=COLORS["window"],
+            bg=COLORS["surface_raised"],
             fg=COLORS["text"],
-            insertbackground=COLORS["cyan"],
+            insertbackground=COLORS["text"],
             selectbackground=COLORS["primary"],
             relief=tk.FLAT,
             bd=0,
@@ -507,10 +500,10 @@ class ScreenshotEditor:
         pins_panel.grid_columnconfigure(0, weight=1)
         tk.Label(
             pins_panel,
-            text="DETAIL + CONTEXT PIN LENS",
+            text="Pinned questions",
             bg=COLORS["surface"],
             fg=COLORS["dim"],
-            font=(FONT_MONO, 8, "bold"),
+            font=(FONT_UI, 8, "bold"),
         ).grid(row=0, column=0, sticky="w", pady=(4, 7))
 
         cards_holder = tk.Frame(pins_panel, bg=COLORS["surface"])
@@ -526,7 +519,7 @@ class ScreenshotEditor:
             cards_holder,
             orient=tk.VERTICAL,
             command=self.cards_canvas.yview,
-            style="Tech.Vertical.TScrollbar",
+            style="App.Vertical.TScrollbar",
         )
         self.cards_frame = tk.Frame(self.cards_canvas, bg=COLORS["surface"])
         self.cards_window_id = self.cards_canvas.create_window(
@@ -574,8 +567,8 @@ class ScreenshotEditor:
             footer,
             textvariable=self.status_text,
             bg=COLORS["surface"],
-            fg=COLORS["text"],
-            font=(FONT_MONO, 8, "bold"),
+            fg=COLORS["muted"],
+            font=(FONT_UI, 8),
         ).grid(row=0, column=0, padx=18, pady=20, sticky="w")
         tk.Label(
             footer,
@@ -587,7 +580,7 @@ class ScreenshotEditor:
 
         send = tk.Button(
             footer,
-            text="REVIEW & PASTE  →",
+            text="Review",
             command=self._prepare_send,
             bg=COLORS["primary"],
             fg=COLORS["text"],
@@ -602,7 +595,7 @@ class ScreenshotEditor:
         )
         self._button(
             footer,
-            "EXPORT PNG",
+            "Export",
             self._export_png,
         ).grid(row=0, column=2, padx=(8, 0), pady=10)
         send.grid(row=0, column=3, padx=16, pady=10)
@@ -630,15 +623,13 @@ class ScreenshotEditor:
         self._add_hover(button, base, hover)
         return button
 
-    def _chip(self, parent, text, color):
+    def _meta_label(self, parent, text, mono=False, accent=False):
         return tk.Label(
             parent,
             text=text,
-            bg=COLORS["surface_raised"],
-            fg=color,
-            padx=9,
-            pady=4,
-            font=(FONT_MONO, 7, "bold"),
+            bg=COLORS["surface"],
+            fg=COLORS["success"] if accent else COLORS["dim"],
+            font=(FONT_MONO if mono else FONT_UI, 8),
         )
 
     def _checkbutton(self, parent, text, variable):
@@ -648,16 +639,16 @@ class ScreenshotEditor:
             variable=variable,
             bg=COLORS["surface_raised"],
             fg=COLORS["text"],
-            selectcolor=COLORS["primary"],
-            activebackground=COLORS["surface_hover"],
+            selectcolor=COLORS["surface_raised"],
+            activebackground=COLORS["surface_raised"],
             activeforeground=COLORS["text"],
-            indicatoron=False,
+            indicatoron=True,
             anchor="w",
             relief=tk.FLAT,
             offrelief=tk.FLAT,
             overrelief=tk.FLAT,
-            padx=9,
-            pady=6,
+            padx=2,
+            pady=4,
             font=(FONT_UI, 8),
             cursor="hand2",
         )
@@ -682,7 +673,7 @@ class ScreenshotEditor:
             active = name == mode
             button.configure(
                 bg=COLORS["surface_hover"] if active else COLORS["surface"],
-                fg=COLORS["cyan"] if active else COLORS["muted"],
+                fg=COLORS["text"] if active else COLORS["muted"],
                 highlightbackground=COLORS["primary"] if active else COLORS["surface"],
                 highlightthickness=1 if active else 0,
             )
@@ -1269,7 +1260,7 @@ class ScreenshotEditor:
         self.pin_images.clear()
 
         pins = [operation for operation in self.operations if operation["type"] == "pin"]
-        self.pin_count_badge.configure(text=f"{len(pins)} PIN{'S' if len(pins) != 1 else ''}")
+        self.pin_count_badge.configure(text=f"{len(pins)} pin{'s' if len(pins) != 1 else ''}")
         if not pins:
             empty = tk.Frame(
                 self.cards_frame,
@@ -1280,19 +1271,19 @@ class ScreenshotEditor:
             empty.pack(fill=tk.X, pady=(0, 8))
             tk.Label(
                 empty,
-                text="①",
+                text="◎",
                 bg=COLORS["surface_raised"],
-                fg=COLORS["primary_hover"],
-                font=(FONT_UI, 22, "bold"),
+                fg=COLORS["primary"],
+                font=(FONT_UI, 20),
             ).pack()
             tk.Label(
                 empty,
-                text="Click the canvas to create a Pin Lens",
+                text="Place a pin to ask about a precise detail",
                 bg=COLORS["surface_raised"],
                 fg=COLORS["muted"],
                 wraplength=250,
                 justify=tk.CENTER,
-                font=(FONT_UI, 8),
+                font=(FONT_UI, 9),
             ).pack(pady=(4, 0))
             return
 
@@ -1318,12 +1309,19 @@ class ScreenshotEditor:
             title.grid(row=0, column=0, sticky="ew")
             tk.Label(
                 title,
-                text=(f"PIN {number:02d}  ·  X {round(operation['x'])}  Y {round(operation['y'])}"),
+                text=f"Pin {number}",
                 bg=background,
-                fg=COLORS["cyan"] if selected else COLORS["primary_hover"],
-                font=(FONT_MONO, 8, "bold"),
+                fg=COLORS["text"],
+                font=(FONT_UI, 9, "bold"),
             ).pack(side=tk.LEFT)
-            for label, direction in (("↑", -1), ("↓", 1)):
+            tk.Label(
+                title,
+                text=f"x {round(operation['x'])}  y {round(operation['y'])}",
+                bg=background,
+                fg=COLORS["dim"],
+                font=(FONT_MONO, 7),
+            ).pack(side=tk.LEFT, padx=(8, 0))
+            for label, direction in (("Up", -1), ("Dn", 1)):
                 tk.Button(
                     title,
                     text=label,
@@ -1355,7 +1353,7 @@ class ScreenshotEditor:
 
             lens_strip = tk.Frame(card, bg=background)
             lens_strip.grid(row=1, column=0, sticky="ew", pady=(7, 0))
-            for lens_name, is_context in (("DETAIL", False), ("CONTEXT", True)):
+            for lens_name, is_context in (("Close-up", False), ("Context", True)):
                 lens = tk.Frame(lens_strip, bg=background)
                 lens.pack(
                     side=tk.LEFT,
@@ -1367,8 +1365,8 @@ class ScreenshotEditor:
                     lens,
                     text=lens_name,
                     bg=background,
-                    fg=COLORS["cyan"] if not is_context else COLORS["primary_hover"],
-                    font=(FONT_MONO, 7, "bold"),
+                    fg=COLORS["muted"],
+                    font=(FONT_UI, 7, "bold"),
                 ).pack(anchor="w", pady=(0, 3))
                 thumbnail = self._pin_thumbnail(operation, context=is_context)
                 self.pin_images.append(thumbnail)
@@ -1394,18 +1392,28 @@ class ScreenshotEditor:
                 item["comment"] = text_variable.get()
 
             variable.trace_add("write", update_comment)
+            tk.Label(
+                card,
+                text="Question",
+                bg=background,
+                fg=COLORS["muted"],
+                font=(FONT_UI, 7, "bold"),
+            ).grid(row=2, column=0, sticky="w", pady=(8, 3))
             entry = tk.Entry(
                 card,
                 textvariable=variable,
-                bg=COLORS["window"],
+                bg=COLORS["surface"],
                 fg=COLORS["text"],
-                insertbackground=COLORS["cyan"],
+                insertbackground=COLORS["text"],
                 selectbackground=COLORS["primary"],
                 relief=tk.FLAT,
                 bd=0,
+                highlightbackground=COLORS["border"],
+                highlightcolor=COLORS["primary"],
+                highlightthickness=1,
                 font=(FONT_UI, 8),
             )
-            entry.grid(row=2, column=0, sticky="ew", pady=(7, 0))
+            entry.grid(row=3, column=0, sticky="ew", ipady=6)
 
     @staticmethod
     def _pin_crop_box(operation, image_size, context=False):
@@ -1431,7 +1439,7 @@ class ScreenshotEditor:
         )
         crop = self.original_image.crop((left, top, right, bottom))
         crop.thumbnail((124, 64), Image.Resampling.LANCZOS)
-        background = Image.new("RGBA", (124, 64), (8, 12, 20, 255))
+        background = Image.new("RGBA", (124, 64), (17, 19, 24, 255))
         x_position = (124 - crop.width) // 2
         y_position = (64 - crop.height) // 2
         background.alpha_composite(crop, (x_position, y_position))
@@ -1471,14 +1479,17 @@ class ScreenshotEditor:
         pins = sum(operation["type"] == "pin" for operation in self.operations)
         redactions = sum(operation["type"] == "redact" for operation in self.operations)
         annotations = len(self.operations)
-        self.status_text.set(
-            f"{annotations} OBJECT{'S' if annotations != 1 else ''}"
-            f"  ·  {pins} PIN{'S' if pins != 1 else ''}"
-            f"  ·  {redactions} MASK{'S' if redactions != 1 else ''}"
-        )
+        if annotations:
+            self.status_text.set(
+                f"{annotations} annotation{'s' if annotations != 1 else ''}"
+                f"  ·  {pins} pin{'s' if pins != 1 else ''}"
+                f"  ·  {redactions} hidden area{'s' if redactions != 1 else ''}"
+            )
+        else:
+            self.status_text.set("No annotations yet")
         self.privacy_text.set(
-            f"TITLE {'ON' if self.include_title.get() else 'OFF'}"
-            f"  ·  MODE {self.mode.get().upper()}"
+            f"Source title {'included' if self.include_title.get() else 'hidden'}"
+            f"  ·  {self.mode.get().capitalize()} tool"
         )
         if hasattr(self, "undo_button"):
             self.undo_button.configure(state=tk.NORMAL if self.undo_stack else tk.DISABLED)
@@ -1519,7 +1530,7 @@ class ScreenshotEditor:
             "PNG",
         )
         previous_status = self.status_text.get()
-        self.status_text.set("EXPORTED PNG  ·  READY")
+        self.status_text.set("PNG exported")
         self.root.after(2200, lambda: self.status_text.set(previous_status))
 
     def _confirm_prompt(self, prompt):
@@ -1544,18 +1555,18 @@ class ScreenshotEditor:
         header.grid(row=0, column=0, sticky="ew")
         tk.Label(
             header,
-            text="FINAL PRIVACY REVIEW",
+            text="Review before pasting",
             bg=COLORS["surface"],
-            fg=COLORS["cyan"],
-            font=(FONT_MONO, 9, "bold"),
+            fg=COLORS["text"],
+            font=(FONT_UI, 13, "bold"),
         ).pack(anchor="w")
         tk.Label(
             header,
-            text=self.privacy_text.get(),
+            text="Check the request below. You stay in control of what gets pasted.",
             bg=COLORS["surface"],
             fg=COLORS["muted"],
-            font=(FONT_UI, 8),
-        ).pack(anchor="w", pady=(3, 0))
+            font=(FONT_UI, 9),
+        ).pack(anchor="w", pady=(5, 0))
 
         prompt_preview = tk.Text(
             preview,
@@ -1567,7 +1578,7 @@ class ScreenshotEditor:
             relief=tk.FLAT,
             padx=14,
             pady=14,
-            font=(FONT_MONO, 9),
+            font=(FONT_UI, 9),
         )
         prompt_preview.insert("1.0", prompt)
         prompt_preview.configure(state=tk.DISABLED)
@@ -1592,24 +1603,24 @@ class ScreenshotEditor:
 
         self._button(
             footer,
-            "←  Back",
+            "Back",
             close_preview,
         ).grid(row=0, column=0, sticky="w")
         tk.Label(
             footer,
-            text="Nothing is sent automatically",
+            text="●  Processed locally · Nothing is sent automatically",
             bg=COLORS["surface"],
-            fg=COLORS["dim"],
-            font=(FONT_UI, 8, "italic"),
+            fg=COLORS["muted"],
+            font=(FONT_UI, 8),
         ).grid(row=0, column=1)
         confirm = tk.Button(
             footer,
-            text="✓  CONFIRM AND PASTE",
+            text="Confirm and paste",
             command=lambda: close_preview(True),
-            bg=COLORS["success"],
-            fg=COLORS["window"],
-            activebackground="#86EFAC",
-            activeforeground=COLORS["window"],
+            bg=COLORS["primary"],
+            fg=COLORS["text"],
+            activebackground=COLORS["primary_hover"],
+            activeforeground=COLORS["text"],
             relief=tk.FLAT,
             bd=0,
             padx=22,

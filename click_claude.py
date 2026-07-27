@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 APP_NAME = "Click to Claude"
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.5.0"
 APP_WINDOW_CLASS = "ClickToClaude"
 CLAUDE_URL = "https://claude.ai/new"
 CHROME_PROFILE_DIR = Path.home() / ".local" / "share" / "click-to-claude" / "chrome-profile"
@@ -768,7 +768,7 @@ def _launch_legacy_pins_ui(image_path, active_window_title):
 
 
 def launch_pins_ui(image_path, active_window_title):
-    """Launch the Visual Prompt Studio, with the compact editor as fallback."""
+    """Launch the screenshot editor, with the compact editor as fallback."""
     try:
         from editor_ui import ScreenshotEditor
     except ModuleNotFoundError as error:

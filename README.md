@@ -6,7 +6,7 @@
 
 [![Quality](https://github.com/AriPrez/click-to-claude/actions/workflows/quality.yml/badge.svg)](https://github.com/AriPrez/click-to-claude/actions/workflows/quality.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-7C5CFF.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-5B7FFF.svg)](LICENSE)
 
 Capture a Linux screen region, add numbered pins or redactions, and paste the
 annotated image plus structured context into a dedicated Claude web-app window.
@@ -109,10 +109,10 @@ bash uninstall.sh
 5. Use **Select** to move pins or select any annotation for deletion.
 6. Add arrows, highlights, and an optional general request.
 7. Choose whether to include the source-window title.
-8. Select **Review & Paste**, inspect the generated text, then approve the paste.
+8. Select **Review**, inspect the generated text, then choose **Confirm and paste**.
 9. Review the result in Claude and submit it yourself.
 
-### Visual Prompt Studio shortcuts
+### Screenshot editor shortcuts
 
 | Shortcut | Action |
 | --- | --- |
